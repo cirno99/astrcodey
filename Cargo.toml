@@ -103,6 +103,11 @@ url = "2.5.8"
 ts-rs = { version = "12.0.1", features = ["no-serde-warnings", "serde-json-impl"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Storage_FileSystem"] }
 
+# 全局分配器，仅供二进制 crate 在 crate root 注册；库 crate 不得引用。
+# MSVC 被上游列为 UNTESTED（jemalloc-sys/src/env.rs 的 UNTESTED_TARGETS），
+# 故各 bin 以 cfg(not(target_env = "msvc")) 门控，Windows 保持系统分配器。
+tikv-jemallocator = "0.7.0"
+
 # --- Profiles ---
 
 [profile.dev]

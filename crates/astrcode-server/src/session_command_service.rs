@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use astrcode_core::{
     config::ModelSelection,
+    event::StoredEvent,
     tool::SessionToolSelection,
     types::{SessionId, TurnId},
     user_input::UserInput,
@@ -16,6 +17,7 @@ use astrcode_extension_sdk::extension::{
     ExtensionError, SessionCommandKind, internal::RuntimeHookCallContext,
 };
 use astrcode_session::compaction::{ManualCompactionOutcome, compact_manual_session};
+use astrcode_session_projection::SessionReadModel;
 
 use crate::{
     bootstrap::ServerRuntime,
@@ -74,6 +76,47 @@ impl SessionCommandService {
         let session_id = session.id().clone();
         tracing::info!(%session_id, "session fully initialized");
         Ok(session_id)
+    }
+
+    /// 打开一个已有会话（恢复），并修复被中断的 turn。
+    ///
+    /// 与 stdio 通道的 `ResumeSession` 同语义：open + repair 后返回可读模型，
+    /// 不改变交互式 focus 状态。
+    pub(crate) async fn open_session(
+        &self,
+        session_id: SessionId,
+    ) -> Result<Arc<SessionReadModel>, HandlerError> {
+        // 只需要 open 把它挂到 runtime 的副作用，后续读模型从投影取。
+        let _session = self
+            .runtime
+            .session_manager()
+            .open(session_id.clone())
+            .await
+            .map_err(|error| {
+                if error.is_not_found() {
+                    HandlerError::SessionNotFound(session_id.to_string())
+                } else {
+                    HandlerError::SessionManager(error)
+                }
+            })?;
+        self.repair_stale_session(&session_id).await?;
+        self.runtime
+            .session_manager()
+            .read_model(&session_id)
+            .await
+            .map_err(HandlerError::SessionManager)
+    }
+
+    /// 读取会话已落盘的完整事件序列，供 `session/load` 回放历史。
+    pub(crate) async fn replay_events(
+        &self,
+        session_id: &SessionId,
+    ) -> Result<Vec<StoredEvent>, HandlerError> {
+        self.runtime
+            .session_manager()
+            .replay_events(session_id)
+            .await
+            .map_err(HandlerError::SessionManager)
     }
 
     pub(crate) async fn submit_input(

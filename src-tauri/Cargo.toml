@@ -24,3 +24,6 @@ tracing-subscriber = { workspace = true }
 
 [build-dependencies]
 tauri-build = { workspace = true }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = { workspace = true }

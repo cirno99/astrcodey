@@ -565,6 +565,10 @@ impl TurnLoop {
                     .context_assembler()
                     .settings()
                     .compact_threshold_percent,
+                self.runtime_generation
+                    .context_assembler()
+                    .settings()
+                    .compact_threshold_tokens,
             ),
             max_input_tokens: model_context_window,
             max_output_tokens: model_limits.max_output_tokens,

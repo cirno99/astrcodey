@@ -65,12 +65,14 @@ pub(crate) async fn plan_auto_compaction(
     let threshold_tokens = compact_threshold_tokens(
         model_limits.max_input_tokens,
         host.context_assembler.settings().compact_threshold_percent,
+        host.context_assembler.settings().compact_threshold_tokens,
     );
     let gate_floor = (threshold_tokens as f64 * PROVIDER_COUNT_GATE_RATIO) as usize;
-    let provider_input_tokens = if snapshot
-        .estimate_own_input_tokens(tools_tokens, model_limits.max_input_tokens)
-        >= gate_floor
-    {
+    // 同一份锚点估算既做 gate 门槛,也在 provider count 不可用时充当阈值判定输入:
+    // 纯字符启发式会低估 CJK 内容,让阈值迟迟等不到触发。
+    let anchored_input_tokens =
+        snapshot.estimate_own_input_tokens(tools_tokens, model_limits.max_input_tokens);
+    let provider_input_tokens = if anchored_input_tokens >= gate_floor {
         let request_messages = snapshot.request_messages(snapshot.messages.clone());
         try_provider_input_tokens(
             host.session,
@@ -90,6 +92,7 @@ pub(crate) async fn plan_auto_compaction(
             system_prompt: Some(&snapshot.system_prompt),
             model_limits,
             provider_input_tokens,
+            anchored_input_tokens: Some(anchored_input_tokens),
         });
     if !threshold_met {
         return None;
@@ -137,6 +140,7 @@ pub(crate) async fn prepare_provider_history(
             system_prompt: Some(&snapshot.system_prompt),
             model_limits: host.llm.model_limits(),
             provider_input_tokens: None,
+            anchored_input_tokens: None,
         })
         .messages;
 

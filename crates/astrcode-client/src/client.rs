@@ -91,6 +91,28 @@ impl<T: ClientTransport> AstrcodeClient<T> {
             _ => Err(ClientError::UnexpectedResponse),
         }
     }
+    /// 恢复（打开）一个已有会话。
+    ///
+    /// 服务端从持久化事件存储重开会话，并通过 `SessionResumed` 通知返回快照。
+    ///
+    /// - `session_id`: 要恢复的会话 ID。
+    /// - 返回服务端重建的会话快照。
+    pub async fn resume_session(&self, session_id: &str) -> Result<SessionSnapshot, ClientError> {
+        let cmd = ClientCommand::ResumeSession {
+            session_id: session_id.into(),
+        };
+        let notification = self
+            .wait_for(&cmd, |n| {
+                matches!(n, ClientNotification::SessionResumed { .. })
+                    || matches!(n, ClientNotification::Error { .. })
+            })
+            .await?;
+        match notification {
+            ClientNotification::SessionResumed { snapshot, .. } => Ok(snapshot),
+            ClientNotification::Error { message, .. } => Err(ClientError::Server(message)),
+            _ => Err(ClientError::UnexpectedResponse),
+        }
+    }
 
     /// 向当前活跃会话提交提示词。
     ///
@@ -288,6 +310,38 @@ mod tests {
 
         let err = client.create_session("/tmp").await.unwrap_err();
         assert!(matches!(err, ClientError::Server(msg) if msg.contains("internal error")));
+    }
+    #[tokio::test]
+    async fn resume_session_returns_snapshot() {
+        let snapshot = SessionSnapshot {
+            session_id: "test-session".into(),
+            cursor: "7".into(),
+            messages: Vec::new(),
+            model_id: "model-1".into(),
+            working_dir: "/tmp".into(),
+            agent_sessions: Vec::new(),
+        };
+        let transport = StubTransport::new(vec![ClientNotification::SessionResumed {
+            session_id: "test-session".into(),
+            snapshot: snapshot.clone(),
+        }]);
+        let client = AstrcodeClient::new(transport);
+
+        let resumed = client.resume_session("test-session").await.unwrap();
+        assert_eq!(resumed.session_id, "test-session");
+        assert_eq!(resumed.cursor, "7");
+    }
+
+    #[tokio::test]
+    async fn resume_session_returns_server_error() {
+        let transport = StubTransport::new(vec![ClientNotification::Error {
+            code: 40401,
+            message: "Session not found".into(),
+        }]);
+        let client = AstrcodeClient::new(transport);
+
+        let err = client.resume_session("missing").await.unwrap_err();
+        assert!(matches!(err, ClientError::Server(msg) if msg.contains("Session not found")));
     }
 
     #[tokio::test]

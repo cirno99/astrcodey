@@ -215,7 +215,8 @@ typed_hook_handler!(
 );
 
 typed_hook_handler!(
-    /// 类型化 `post_tool_use` hook handler;与 `Worker::hook(LifecycleEvent::PostToolUse, ..)` 组合使用。
+    /// 类型化 `post_tool_use` hook handler;与 `Worker::hook(LifecycleEvent::PostToolUse, ..)`
+    /// 组合使用。
     post_tool_use_handler,
     PostToolUseHookInput,
     PostToolUseResult,
@@ -223,7 +224,8 @@ typed_hook_handler!(
 );
 
 typed_hook_handler!(
-    /// 类型化 provider hook handler,适用于 `before_provider_request` 与 `after_provider_response`。
+    /// 类型化 provider hook handler,适用于 `before_provider_request` 与
+    /// `after_provider_response`。
     provider_handler,
     ProviderHookInput,
     ProviderResult,

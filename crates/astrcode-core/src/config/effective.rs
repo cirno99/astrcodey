@@ -110,6 +110,8 @@ pub struct ContextSettings {
     pub predictive_compact_enabled: bool,
     /// 触发自动压缩的上下文占用百分比阈值（0–100）。
     pub compact_threshold_percent: f32,
+    /// 触发自动压缩的上下文绝对 token 上限；与百分比阈值取较小者。
+    pub compact_threshold_tokens: Option<usize>,
     /// 压缩失败时的最大重试次数。
     pub compact_max_retry_attempts: u8,
     /// LLM 压缩输出的最大 token 数。
@@ -136,6 +138,7 @@ impl Default for ContextSettings {
             auto_compact_enabled: super::defaults::DEFAULT_COMPACT_AUTO_ENABLED,
             predictive_compact_enabled: super::defaults::DEFAULT_PREDICTIVE_COMPACT_ENABLED,
             compact_threshold_percent: super::defaults::DEFAULT_COMPACT_THRESHOLD_PERCENT,
+            compact_threshold_tokens: super::defaults::DEFAULT_COMPACT_THRESHOLD_TOKENS,
             compact_max_retry_attempts: super::defaults::DEFAULT_COMPACT_MAX_RETRY_ATTEMPTS,
             compact_max_output_tokens: super::defaults::DEFAULT_COMPACT_MAX_OUTPUT_TOKENS,
             compact_keep_recent_turns: super::defaults::DEFAULT_COMPACT_KEEP_RECENT_TURNS,

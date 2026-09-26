@@ -197,6 +197,7 @@ async fn extension_config_candidate_is_published_only_after_validation_and_save(
         .update_and_save(|candidate| {
             set_coding_timeout(candidate, 180);
             candidate.runtime.compact_threshold_percent = Some(42.0);
+            candidate.runtime.compact_threshold_tokens = Some(200_000);
             Ok(())
         })
         .await;
@@ -217,6 +218,13 @@ async fn extension_config_candidate_is_published_only_after_validation_and_save(
             .compact_threshold_percent,
         42.0,
         "context settings must publish with the same runtime generation"
+    );
+    assert_eq!(
+        runtime_services
+            .read_effective()
+            .context
+            .compact_threshold_tokens,
+        Some(200_000),
     );
 
     assert!(runner.shutdown().await.is_empty());

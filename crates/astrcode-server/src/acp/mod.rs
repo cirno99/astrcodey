@@ -12,8 +12,9 @@ use agent_client_protocol::{
     Agent, ByteStreams, Client, ConnectionTo, Dispatch, Error, Responder,
     schema::{
         AgentCapabilities, AgentNotification, CancelNotification, InitializeRequest,
-        InitializeResponse, NewSessionRequest, NewSessionResponse, PromptRequest, PromptResponse,
-        ProtocolVersion, SessionId as AcpSessionId, StopReason,
+        InitializeResponse, LoadSessionRequest, LoadSessionResponse, NewSessionRequest,
+        NewSessionResponse, PromptRequest, PromptResponse, ProtocolVersion,
+        SessionId as AcpSessionId, StopReason,
     },
 };
 use astrcode_core::{event::Event, types::SessionId};
@@ -45,7 +46,7 @@ pub async fn run_acp_server(server_app: Arc<ServerApp>) -> agent_client_protocol
                     let _ = req; // accept whatever version the client sends
                     responder.respond(
                         InitializeResponse::new(ProtocolVersion::V1)
-                            .agent_capabilities(AgentCapabilities::new())
+                            .agent_capabilities(AgentCapabilities::new().load_session(true))
                             .agent_info(agent_client_protocol::schema::Implementation::new(
                                 "astrcode",
                                 env!("CARGO_PKG_VERSION"),
@@ -69,6 +70,21 @@ pub async fn run_acp_server(server_app: Arc<ServerApp>) -> agent_client_protocol
                             responder.respond(NewSessionResponse::new(acp_sid))
                         },
                         Err(e) => responder.respond_with_internal_error(e.to_string()),
+                    }
+                }
+            },
+            agent_client_protocol::on_receive_request!(),
+        )
+        .on_receive_request(
+            {
+                let session_commands = session_commands.clone();
+
+                async move |req: LoadSessionRequest,
+                            responder: Responder<LoadSessionResponse>,
+                            cx: ConnectionTo<Client>| {
+                    match handle_load_session(req, &session_commands, &cx).await {
+                        Ok(response) => responder.respond(response),
+                        Err(error) => responder.respond_with_error(error),
                     }
                 }
             },
@@ -165,6 +181,60 @@ async fn handle_prompt(
         },
         Ok(TurnCompletion::Dropped) => Ok(StopReason::Cancelled),
         Err(_) => Ok(StopReason::EndTurn),
+    }
+}
+
+/// 加载（恢复）一个已存在会话，并把历史回放给客户端。
+///
+/// cwd 与服务端记录的 working_dir 不一致时只告警：会话自身的目录才是权威值，
+/// 客户端可能传入等价但非字面相同的路径。
+async fn handle_load_session(
+    req: LoadSessionRequest,
+    session_commands: &SessionCommandService,
+    cx: &ConnectionTo<Client>,
+) -> Result<LoadSessionResponse, Error> {
+    let session_id = SessionId::from(req.session_id.to_string());
+    let state = session_commands
+        .open_session(session_id.clone())
+        .await
+        .map_err(handler_error_to_acp)?;
+
+    let requested_cwd = req.cwd.to_string_lossy();
+    if state.identity.working_dir.as_str() != requested_cwd.as_ref() {
+        tracing::warn!(
+            %session_id,
+            requested_cwd = %requested_cwd,
+            session_working_dir = %state.identity.working_dir,
+            "ACP session/load cwd differs from the stored session working directory"
+        );
+    }
+
+    replay_session_history(&session_id, session_commands, cx).await;
+    Ok(LoadSessionResponse::default())
+}
+
+/// 按落盘顺序把历史事件作为 `session/update` 推送给客户端。
+///
+/// 回放失败只告警：会话已经打开且可用，不应让整个加载请求失败。
+async fn replay_session_history(
+    session_id: &SessionId,
+    session_commands: &SessionCommandService,
+    cx: &ConnectionTo<Client>,
+) {
+    let events = match session_commands.replay_events(session_id).await {
+        Ok(events) => events,
+        Err(error) => {
+            tracing::warn!(%session_id, %error, "failed to replay session history for ACP load");
+            return;
+        },
+    };
+
+    for stored in &events {
+        if let Some(notification) =
+            events::to_history_notification(session_id.as_str(), &stored.payload)
+        {
+            let _ = cx.send_notification(AgentNotification::SessionNotification(notification));
+        }
     }
 }
 

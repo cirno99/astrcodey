@@ -45,6 +45,8 @@ llmMaxRetries = 5
 llmRetryBaseDelayMs = 1000
 compactAutoEnabled = true
 compactThresholdPercent = 83.5
+# 绝对触发线；与百分比阈值取较小者（此处 1M 窗口 → 200K 触发）
+compactThresholdTokens = 200000
 compactKeepRecentTurns = 1
 agentMaxDepth = 2
 agentToolMaxParallelCalls = 5
@@ -103,6 +105,7 @@ provider = "duckduckgo"
 | `llmRetryBaseDelayMs` | `1000` | 指数退避基础延迟（毫秒） |
 | `compactAutoEnabled` | `true` | 上下文占用超阈值时自动 compact |
 | `compactThresholdPercent` | `83.5` | 触发自动 compact 的上下文占用百分比 |
+| `compactThresholdTokens` | 未设置 | 触发自动 compact 的绝对 token 上限；与百分比阈值取较小者。1M 窗口模型设 `200000` 即在 200K 触发，窗口更小的模型自动退化为百分比阈值 |
 | `compactMaxRetryAttempts` | `3` | compact LLM 调用最大重试 |
 | `compactMaxOutputTokens` | `20000` | compact 摘要最大输出 token |
 | `compactKeepRecentTurns` | `1` | 自动/反应式 compact 保留的最近完整 user turn 数；省略该字段使用默认语义 |

@@ -4,4 +4,8 @@ incremental = true
 [term]
 color = "always"
 
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
 # 链接加速: 运行 ./scripts/setup-fast-compile.sh 自动检测并配置到 ~/.cargo/config.toml

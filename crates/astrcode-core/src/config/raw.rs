@@ -212,6 +212,8 @@ pub struct RuntimeSection {
     pub compact_auto_enabled: Option<bool>,
     /// 触发自动压缩的上下文占用百分比阈值（0–100）。
     pub compact_threshold_percent: Option<f32>,
+    /// 触发自动压缩的上下文绝对 token 上限；与百分比阈值取较小者。
+    pub compact_threshold_tokens: Option<usize>,
     /// 压缩失败时的最大重试次数。
     pub compact_max_retry_attempts: Option<u8>,
     /// LLM 压缩输出的最大 token 数。
@@ -306,6 +308,13 @@ impl ModelSelection {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn runtime_compact_threshold_tokens_uses_camel_case_key() {
+        let runtime: RuntimeSection =
+            serde_json::from_str(r#"{"compactThresholdTokens": 200000}"#).unwrap();
+        assert_eq!(runtime.compact_threshold_tokens, Some(200_000));
+    }
 
     #[test]
     fn provider_wire_format_uses_documented_wire_names() {

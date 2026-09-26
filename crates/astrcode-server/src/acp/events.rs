@@ -16,6 +16,22 @@ pub(super) fn to_session_notification(
     Some(SessionNotification::new(session_id.to_string(), update))
 }
 
+/// 将持久化历史事件映射为 ACP `SessionNotification`，用于 `session/load` 回放。
+///
+/// 与实时路径分开：实时路径已经用 live delta 转发助手文本，若在 durable 映射里
+/// 补齐整条消息，同一段文本会在一次 turn 中重复出现。
+pub(super) fn to_history_notification(
+    session_id: &str,
+    payload: &DurableEventPayload,
+) -> Option<SessionNotification> {
+    let update = match payload {
+        DurableEventPayload::UserMessage { text, .. } => user_chunk(text.clone()),
+        DurableEventPayload::AssistantMessageCompleted { text, .. } => text_chunk(text.clone()),
+        payload => durable_session_update(payload)?,
+    };
+    Some(SessionNotification::new(session_id.to_string(), update))
+}
+
 fn text_chunk(delta: String) -> SessionUpdate {
     SessionUpdate::AgentMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
         delta,
@@ -25,6 +41,12 @@ fn text_chunk(delta: String) -> SessionUpdate {
 fn thought_chunk(delta: String) -> SessionUpdate {
     SessionUpdate::AgentThoughtChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
         delta,
+    ))))
+}
+
+fn user_chunk(text: String) -> SessionUpdate {
+    SessionUpdate::UserMessageChunk(ContentChunk::new(ContentBlock::Text(TextContent::new(
+        text,
     ))))
 }
 
@@ -267,5 +289,53 @@ mod tests {
                 expected_cancelled_marker,
             );
         }
+    }
+    #[test]
+    fn maps_history_messages_to_conversation_chunks() {
+        let user = DurableEventPayload::UserMessage {
+            message_id: astrcode_core::types::new_message_id(),
+            text: "hello".into(),
+            attachments: vec![],
+            accepted_seq: None,
+        };
+        let assistant = DurableEventPayload::AssistantMessageCompleted {
+            message_id: astrcode_core::types::new_message_id(),
+            text: "hi there".into(),
+            reasoning_content: None,
+        };
+
+        let SessionUpdate::UserMessageChunk(chunk) =
+            to_history_notification("session-1", &user).unwrap().update
+        else {
+            panic!("expected user message chunk");
+        };
+        let ContentBlock::Text(text) = chunk.content else {
+            panic!("expected text block");
+        };
+        assert_eq!(text.text, "hello");
+
+        let SessionUpdate::AgentMessageChunk(chunk) =
+            to_history_notification("session-1", &assistant)
+                .unwrap()
+                .update
+        else {
+            panic!("expected agent message chunk");
+        };
+        let ContentBlock::Text(text) = chunk.content else {
+            panic!("expected text block");
+        };
+        assert_eq!(text.text, "hi there");
+
+        let tool = DurableEventPayload::ToolCallCompleted {
+            call_id: "call-1".into(),
+            tool_name: "probe".into(),
+            result: ToolResult::success("done"),
+            arguments: String::new(),
+            arguments_json: None,
+        };
+        assert!(matches!(
+            to_history_notification("session-1", &tool).map(|notification| notification.update),
+            Some(SessionUpdate::ToolCallUpdate(_))
+        ));
     }
 }

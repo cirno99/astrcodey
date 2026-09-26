@@ -35,11 +35,16 @@ pub fn build_prompt_snapshot<M: Borrow<LlmMessage>>(
     system_prompt: Option<&str>,
     limits: ModelLimits,
     threshold_percent: f32,
+    threshold_tokens_cap: Option<usize>,
 ) -> PromptTokenSnapshot {
     let context_tokens = estimate_request_tokens_with_prompt(messages, system_prompt);
     PromptTokenSnapshot {
         context_tokens,
-        threshold_tokens: compact_threshold_tokens(limits.max_input_tokens, threshold_percent),
+        threshold_tokens: compact_threshold_tokens(
+            limits.max_input_tokens,
+            threshold_percent,
+            threshold_tokens_cap,
+        ),
         max_input_tokens: limits.max_input_tokens,
         max_output_tokens: limits.max_output_tokens,
     }
@@ -59,14 +64,26 @@ pub(crate) fn estimate_request_tokens_with_prompt<M: Borrow<LlmMessage>>(
     )
 }
 
-/// 根据模型输入窗口和百分比阈值计算 compact 触发 token。
-pub fn compact_threshold_tokens(effective_window: usize, threshold_percent: f32) -> usize {
+/// 根据模型输入窗口、百分比阈值与可选绝对 token 上限计算 compact 触发 token。
+///
+/// 绝对上限与百分比阈值取较小者：大窗口模型的触发线被压到固定值，窗口本身
+/// 就小于上限的模型仍按百分比触发，不会因为上限过高而失去自动压缩。
+pub fn compact_threshold_tokens(
+    effective_window: usize,
+    threshold_percent: f32,
+    absolute_tokens: Option<usize>,
+) -> usize {
     let threshold_percent = if threshold_percent.is_finite() {
         threshold_percent.clamp(0.0, 100.0)
     } else {
         100.0
     };
-    ((effective_window as f64) * f64::from(threshold_percent) / 100.0).floor() as usize
+    let percent_tokens =
+        ((effective_window as f64) * f64::from(threshold_percent) / 100.0).floor() as usize;
+    match absolute_tokens {
+        Some(absolute_tokens) => percent_tokens.min(absolute_tokens),
+        None => percent_tokens,
+    }
 }
 
 /// 本地估算达到 compact 阈值的这一比例后,才调 provider count_tokens 精确判定。
@@ -178,7 +195,7 @@ mod tests {
 
     #[test]
     fn should_compact_uses_fractional_threshold() {
-        let threshold_tokens = compact_threshold_tokens(20_000, 83.5);
+        let threshold_tokens = compact_threshold_tokens(20_000, 83.5, None);
         assert_eq!(threshold_tokens, 16_700);
 
         let below_threshold = PromptTokenSnapshot {
@@ -194,6 +211,20 @@ mod tests {
             ..below_threshold
         };
         assert!(should_compact(at_threshold));
+    }
+
+    #[test]
+    fn compact_threshold_keeps_smaller_of_percent_and_absolute_cap() {
+        assert_eq!(
+            compact_threshold_tokens(1_000_000, 83.5, Some(200_000)),
+            200_000
+        );
+        // 窗口小于绝对上限时仍按百分比触发，避免自动压缩永不生效。
+        assert_eq!(
+            compact_threshold_tokens(128_000, 83.5, Some(200_000)),
+            106_880
+        );
+        assert_eq!(compact_threshold_tokens(1_000_000, 83.5, None), 835_000);
     }
 
     #[test]

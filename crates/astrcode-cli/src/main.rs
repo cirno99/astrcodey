@@ -19,6 +19,12 @@ use astrcode_extension_sdk::transport::{TransportFeature, TransportProfile};
 use astrcode_protocol::framing::PROTOCOL_VERSION;
 use astrcode_server::bootstrap::{BootstrapOptions, ServerApp};
 use clap::{Parser, Subcommand};
+#[cfg(not(target_env = "msvc"))]
+use tikv_jemallocator::Jemalloc;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 fn cli_approval_bootstrap_opts(yolo: bool, manual: bool) -> BootstrapOptions {
     let approval_mode_override = if yolo {
@@ -136,8 +142,17 @@ enum Commands {
     },
     /// 执行单次提示（无头模式）
     Exec {
-        /// 提示文本
-        prompt: String,
+        /// 提示文本；省略或传 `-` 时从 stdin 读取
+        prompt: Option<String>,
+        /// 恢复指定会话（会话 id）
+        #[arg(long, value_name = "SESSION_ID", conflicts_with = "last")]
+        session: Option<String>,
+        /// 恢复最近一次会话（默认按当前工作目录过滤）
+        #[arg(long)]
+        last: bool,
+        /// 配合 --last 使用时不按工作目录过滤
+        #[arg(long, requires = "last")]
+        all: bool,
         /// 输出模式：jsonl
         #[arg(long)]
         jsonl: bool,
@@ -314,6 +329,9 @@ async fn main() -> ExitCode {
         },
         Commands::Exec {
             prompt,
+            session,
+            last,
+            all,
             jsonl,
             timeout,
             yolo,
@@ -323,8 +341,14 @@ async fn main() -> ExitCode {
                 eprintln!("error: --yolo and --manual are mutually exclusive");
                 return ExitCode::from(2);
             }
+            let resume = match (session, last) {
+                (Some(session_id), _) => Some(exec::ResumeTarget::Session(session_id)),
+                (None, true) => Some(exec::ResumeTarget::Last { all }),
+                (None, false) => None,
+            };
             if let Err(e) = exec::run(
-                &prompt,
+                prompt,
+                resume,
                 jsonl,
                 timeout,
                 cli_approval_bootstrap_opts(yolo, manual),
@@ -332,6 +356,9 @@ async fn main() -> ExitCode {
             .await
             {
                 eprintln!("Exec error: {e}");
+                if matches!(e, exec::ExecError::EmptyPrompt) {
+                    return ExitCode::from(2);
+                }
                 return ExitCode::from(1);
             }
         },

@@ -399,6 +399,9 @@ fn build_context_settings(runtime: &RuntimeSection) -> ContextSettings {
         compact_threshold_percent: runtime
             .compact_threshold_percent
             .unwrap_or(astrcode_core::config::defaults::DEFAULT_COMPACT_THRESHOLD_PERCENT),
+        compact_threshold_tokens: runtime
+            .compact_threshold_tokens
+            .or(astrcode_core::config::defaults::DEFAULT_COMPACT_THRESHOLD_TOKENS),
         compact_max_retry_attempts: runtime
             .compact_max_retry_attempts
             .unwrap_or(astrcode_core::config::defaults::DEFAULT_COMPACT_MAX_RETRY_ATTEMPTS),
@@ -545,6 +548,7 @@ fn merge_runtime_section(base: &mut RuntimeSection, overlay: RuntimeSection) {
     merge_field!(llm_retry_base_delay_ms);
     merge_field!(compact_auto_enabled);
     merge_field!(compact_threshold_percent);
+    merge_field!(compact_threshold_tokens);
     merge_field!(compact_max_retry_attempts);
     merge_field!(compact_max_output_tokens);
     merge_field!(compact_keep_recent_turns);

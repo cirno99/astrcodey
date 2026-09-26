@@ -70,3 +70,6 @@ astrcode-storage = { path = "../astrcode-storage", features = ["testing"] }
 astrcode-extensions = { path = "../astrcode-extensions", features = ["testing"] }
 # 同理：启用 core 的 llm::testing 测试脚手架。
 astrcode-core = { path = "../astrcode-core", features = ["testing"] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = { workspace = true }

@@ -2519,6 +2519,7 @@ async fn runtime_with_event_store(
             auto_compact_enabled: true,
             predictive_compact_enabled: false,
             compact_threshold_percent: 83.5,
+            compact_threshold_tokens: None,
             compact_max_retry_attempts: 3,
             compact_max_output_tokens: 20_000,
             compact_keep_recent_turns: None,

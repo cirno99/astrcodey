@@ -811,6 +811,7 @@ fn test_runtime_with_runner(
             auto_compact_enabled: context_settings.auto_compact_enabled,
             predictive_compact_enabled: context_settings.predictive_compact_enabled,
             compact_threshold_percent: context_settings.compact_threshold_percent,
+            compact_threshold_tokens: context_settings.compact_threshold_tokens,
             compact_max_retry_attempts: context_settings.compact_max_retry_attempts,
             compact_max_output_tokens: context_settings.compact_max_output_tokens,
             compact_keep_recent_turns: context_settings.compact_keep_recent_turns,

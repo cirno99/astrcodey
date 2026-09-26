@@ -39,6 +39,8 @@ pub const DEFAULT_LLM_CONTEXT_LIMIT: usize = 65536;
 pub const DEFAULT_COMPACT_AUTO_ENABLED: bool = true;
 /// 触发自动压缩的上下文占用百分比阈值。
 pub const DEFAULT_COMPACT_THRESHOLD_PERCENT: f32 = 83.5;
+/// 触发自动压缩的上下文绝对 token 上限，未设置时只用百分比阈值。
+pub const DEFAULT_COMPACT_THRESHOLD_TOKENS: Option<usize> = None;
 /// 压缩失败时的最大重试次数。
 pub const DEFAULT_COMPACT_MAX_RETRY_ATTEMPTS: u8 = 3;
 /// LLM 压缩输出的最大 token 数。

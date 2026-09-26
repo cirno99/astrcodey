@@ -22,6 +22,11 @@ pub struct ContextPrepareInput<'a> {
     pub model_limits: ModelLimits,
     /// provider 返回的 input token 统计；缺失时回退本地估算。
     pub provider_input_tokens: Option<usize>,
+    /// 带 provider 真实用量锚点的本地输入估算，含可见工具定义。
+    ///
+    /// 仅在 provider 不支持输入计数时才用它替代纯字符启发式：启发式按固定字符/token
+    /// 折算，对 CJK 内容系统性低估，会让阈值迟迟等不到触发。
+    pub anchored_input_tokens: Option<usize>,
 }
 
 /// 经过 provider 协议归一化的可见消息及其 token 快照。
@@ -61,14 +66,17 @@ impl LlmContextAssembler {
         system_prompt: Option<&str>,
         model_limits: ModelLimits,
         provider_input_tokens: Option<usize>,
+        anchored_input_tokens: Option<usize>,
     ) -> PromptTokenSnapshot {
         let mut snapshot = build_prompt_snapshot(
             messages,
             system_prompt,
             model_limits,
             self.settings.compact_threshold_percent,
+            self.settings.compact_threshold_tokens,
         );
-        if let Some(context_tokens) = provider_input_tokens {
+        // 估算精确度递减：provider 计数 → 带真实用量锚点的本地估算 → 纯字符启发式。
+        if let Some(context_tokens) = provider_input_tokens.or(anchored_input_tokens) {
             snapshot.context_tokens = context_tokens;
         }
         snapshot
@@ -89,6 +97,7 @@ impl ContextAssembler for LlmContextAssembler {
             input.system_prompt,
             input.model_limits,
             input.provider_input_tokens,
+            input.anchored_input_tokens,
         );
         PreparedContext {
             messages,
@@ -102,6 +111,7 @@ impl ContextAssembler for LlmContextAssembler {
             input.system_prompt,
             input.model_limits.clone(),
             input.provider_input_tokens,
+            input.anchored_input_tokens,
         );
         should_compact(snapshot)
             || (self.settings.predictive_compact_enabled
@@ -139,6 +149,7 @@ mod tests {
                 max_output_tokens: 1_024,
             },
             provider_input_tokens: Some(4_200),
+            anchored_input_tokens: None,
         };
 
         let prepared = assembler.prepare_messages(input);
@@ -171,9 +182,38 @@ mod tests {
                 max_output_tokens: 1_024,
             },
             provider_input_tokens: None,
+            anchored_input_tokens: None,
         };
 
         assert!(!assembler.should_auto_compact(&input(200_000)));
         assert!(assembler.should_auto_compact(&input(100)));
+    }
+
+    #[test]
+    fn auto_compact_prefers_anchored_estimate_over_character_heuristic() {
+        let assembler = LlmContextAssembler::new(ContextSettings {
+            compact_threshold_tokens: Some(200_000),
+            ..ContextSettings::default()
+        });
+        let messages = vec![LlmMessage::user("short")]
+            .into_iter()
+            .map(Arc::new)
+            .collect::<Vec<_>>();
+        let input = |provider_input_tokens, anchored_input_tokens| ContextPrepareInput {
+            messages: &messages,
+            system_prompt: None,
+            model_limits: ModelLimits {
+                max_input_tokens: 1_000_000,
+                max_output_tokens: 1_024,
+            },
+            provider_input_tokens,
+            anchored_input_tokens,
+        };
+
+        // 纯字符启发式只看消息字符数,真实用量锚点已过线时必须触发。
+        assert!(!assembler.should_auto_compact(&input(None, None)));
+        assert!(assembler.should_auto_compact(&input(None, Some(200_000))));
+        // provider 精确计数优先于锚点估算。
+        assert!(!assembler.should_auto_compact(&input(Some(10), Some(200_000))));
     }
 }
