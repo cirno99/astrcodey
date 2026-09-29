@@ -7,6 +7,7 @@ use astrcode_extension_sdk::{
     host::{HostError, SessionControlClient},
     wire::session::{
         HostCreateRootSessionRequest, HostRootSubmitTurnRequest, HostSessionTargetRequest,
+        SessionToolSelectionDto,
     },
 };
 use parking_lot::Mutex;
@@ -18,6 +19,13 @@ use crate::{
     failure::{self, CardAction},
     prompt,
 };
+
+/// 卡片会话不提供的工具：无人值守模式下没有用户可以应答。
+///
+/// 工具名由 `astrcode-extension-ask-user`
+/// 定义（`crates/astrcode-extension-ask-user/src/model.rs`）； 内置插件只能依赖插件系统，
+/// 无法引用该常量，故按字面量匹配。
+const UNATTENDED_EXCLUDED_TOOLS: [&str; 1] = ["askUser"];
 
 #[derive(Debug, thiserror::Error)]
 pub enum KanbanError {
@@ -314,6 +322,9 @@ impl KanbanRuntime {
                     .session_control
                     .create_root(HostCreateRootSessionRequest {
                         working_dir: Some(card.working_dir.clone()),
+                        tool_selection: Some(SessionToolSelectionDto::all_except(
+                            UNATTENDED_EXCLUDED_TOOLS,
+                        )),
                         ..HostCreateRootSessionRequest::default()
                     })
                     .await?;

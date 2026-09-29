@@ -86,8 +86,8 @@ struct Board { cards: Vec<Card> }
   "automationEnabled": false,        // 自动化总开关；与扩展启用状态相互独立
   "pollIntervalSecs": 30,
   "maxConcurrentCards": 1,
-  "maxAttemptsPerCard": 3,
-  "maxContinuationsPerTurn": 50,
+  "maxAttemptsPerCard": 10,
+  "maxContinuationsPerTurn": 200,
   "maxErrorRetriesPerCard": 3,      // 执行失败重试次数上限；与 maxAttemptsPerCard 语义分离
   "defaultWorkingDir": null,         // 新建卡片时的默认工作目录
   "analyzePrompt": null,             // null 时用内置默认
@@ -117,7 +117,7 @@ struct Board { cards: Vec<Card> }
 
 `run_card`：
 
-1. `create_root(working_dir, system_prompt)` 建 root session。
+1. `create_root(working_dir, tool_selection)` 建 root session，`tool_selection` 排除 `askUser`。
 2. 落盘 `session_id`，列置 `analyzing`。
 3. `submit_root_turn(分析提示词, wait_for_result = true)`。
 4. 重新读盘；若卡片已是终态则返回。
@@ -125,6 +125,8 @@ struct Board { cards: Vec<Card> }
 6. `submit_root_turn(实施提示词, wait_for_result = true)`。
 7. 重新读盘；若卡片已是终态则返回。
 8. 重读卡片：已是终态则返回；`attempt >= maxAttemptsPerCard` 则置 `blocked`；否则 `attempt += 1` 并回到 6。
+
+无人值守：卡片会话用 `tool_selection = all_except(["askUser"])` 排除提问工具。看板运行期间没有用户可以应答，留着它只会让 turn 挂起到 ask-user 扩展的超时（无 `recommended` 选项时 300 秒）再拿到一个错误结果；排除之后模型无从提问，只能自行决策。工具名按字面量匹配——内置插件只能依赖插件系统，无法引用 `astrcode-extension-ask-user` 的常量。
 
 ### 6.3 一致性检查
 
@@ -138,7 +140,7 @@ struct Board { cards: Vec<Card> }
 
 注册 `on_continue_after_stop`，按 session 归属判断：卡片处于 `implementing` 时返回 `ContinueOneStep`，否则 `EndTurn`。
 
-注册时固定 `ContinueAfterStopOptions::limited(200)` 作为硬闸门；可配置的 `maxContinuationsPerTurn` 由 handler 读取运行期配置后自行判定——`register()` 拿不到配置，而热改配置不应重新注册 hook。
+注册时固定 `ContinueAfterStopOptions::limited(HARD_CONTINUATION_LIMIT)`（200）作为硬闸门；可配置的 `maxContinuationsPerTurn` 由 handler 读取运行期配置后自行判定——`register()` 拿不到配置，而热改配置不应重新注册 hook。默认值直接取硬闸门常量，单轮默认就能跑满 200 次续跑；想调到硬闸门之上需要同时改代码常量。
 
 这让单次实施 turn 可以持续工作，而不必靠反复重投来「续命」。
 

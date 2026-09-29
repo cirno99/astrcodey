@@ -62,11 +62,12 @@ const fn default_max_concurrent_cards() -> usize {
 }
 
 const fn default_max_attempts_per_card() -> u32 {
-    3
+    10
 }
 
+/// 无人值守希望单轮尽可能长，默认直接开到硬闸门；再往上要改 [`crate::HARD_CONTINUATION_LIMIT`]。
 const fn default_max_continuations_per_turn() -> u32 {
-    50
+    crate::HARD_CONTINUATION_LIMIT
 }
 
 const fn default_max_error_retries_per_card() -> u32 {
@@ -147,6 +148,11 @@ mod tests {
         assert!(!config.automation_enabled);
         assert_eq!(config.poll_interval_secs, 30);
         assert_eq!(config.max_concurrent_cards, 1);
+        assert_eq!(config.max_attempts_per_card, 10);
+        assert_eq!(
+            config.max_continuations_per_turn,
+            crate::HARD_CONTINUATION_LIMIT
+        );
         assert_eq!(config.max_error_retries_per_card, 3);
         config.validate().expect("defaults must be valid");
     }
