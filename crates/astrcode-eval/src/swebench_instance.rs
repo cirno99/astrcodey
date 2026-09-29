@@ -1,7 +1,6 @@
 //! 在官方 SWE-bench instance image 中运行单个求解 session。
 
 use std::{
-    collections::HashSet,
     fs::File,
     io::Read,
     path::Path,
@@ -9,6 +8,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use rustc_hash::FxHashSet as HashSet;
 use sha2::{Digest, Sha256};
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
@@ -1420,7 +1420,7 @@ mod tests {
 
         assert_eq!(
             new_untracked_paths(&baseline, &current),
-            HashSet::from(["new source.py".to_string(), "new/module.py".to_string()])
+            HashSet::from_iter(["new source.py".to_string(), "new/module.py".to_string()])
         );
     }
 

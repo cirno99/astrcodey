@@ -8,7 +8,7 @@
 //! （及其各自的 durable_*/live_* 分支），否则 dev snapshot 会缺失类型或详情。
 
 #[cfg(debug_assertions)]
-use std::{collections::HashMap, sync::OnceLock, time::Instant};
+use std::{sync::OnceLock, time::Instant};
 
 use astrcode_core::event::Event;
 #[cfg(debug_assertions)]
@@ -17,6 +17,8 @@ use astrcode_core::event::{
 };
 #[cfg(debug_assertions)]
 use parking_lot::Mutex;
+#[cfg(debug_assertions)]
+use rustc_hash::FxHashMap as HashMap;
 
 #[cfg(debug_assertions)]
 static LAST_EVENT_AT: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
@@ -26,7 +28,7 @@ pub(crate) fn capture_event(source: &'static str, event: &Event) {
     let now = Instant::now();
     let key = snapshot_key(event);
     let since_previous_ms = LAST_EVENT_AT
-        .get_or_init(|| Mutex::new(HashMap::new()))
+        .get_or_init(|| Mutex::new(HashMap::default()))
         .lock()
         .insert(key, now)
         .map(|previous| now.duration_since(previous).as_millis());

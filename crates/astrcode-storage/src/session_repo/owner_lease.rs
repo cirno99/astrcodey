@@ -4,7 +4,6 @@
 //! `.astrcode-session-owner.lock` 文件上的 OS 排他锁互斥。
 
 use std::{
-    collections::HashMap,
     fs::File,
     path::{Path, PathBuf},
     sync::{Arc, OnceLock, Weak},
@@ -12,6 +11,7 @@ use std::{
 
 use fs2::FileExt;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::StorageError;
 
@@ -19,7 +19,7 @@ static SESSION_OWNER_LEASES: OnceLock<Mutex<HashMap<PathBuf, Weak<SessionOwnerLe
     OnceLock::new();
 
 fn session_owner_leases() -> &'static Mutex<HashMap<PathBuf, Weak<SessionOwnerLeaseInner>>> {
-    SESSION_OWNER_LEASES.get_or_init(|| Mutex::new(HashMap::new()))
+    SESSION_OWNER_LEASES.get_or_init(|| Mutex::new(HashMap::default()))
 }
 
 pub(super) struct SessionOwnerLease {

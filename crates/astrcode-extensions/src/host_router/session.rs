@@ -1,11 +1,6 @@
 //! Session history, control, and inspection capabilities.
 
-use std::{
-    collections::{HashMap, HashSet},
-    convert::Infallible,
-    future::Future,
-    sync::Arc,
-};
+use std::{convert::Infallible, future::Future, sync::Arc};
 
 use astrcode_core::{
     event::{DurableEventPayload, Phase, StoredEvent},
@@ -48,6 +43,7 @@ use astrcode_extension_sdk::{
 };
 use astrcode_session_projection::session_lineage::{ParentChainWalkError, collect_parent_chain};
 use astrcode_storage::{EventReader, SessionReader, StorageError};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::Value;
 
 use super::{
@@ -383,7 +379,7 @@ impl SessionGroup {
             .list_all_session_summaries()
             .await
             .map_err(storage_read_error)?;
-        let mut parents = HashMap::with_capacity(summaries.len());
+        let mut parents = HashMap::with_capacity_and_hasher(summaries.len(), Default::default());
         for summary in &summaries {
             if parents
                 .insert(
@@ -620,7 +616,7 @@ async fn visible_history_sessions(
     parents: &HashMap<astrcode_core::types::SessionId, Option<astrcode_core::types::SessionId>>,
 ) -> Result<HashSet<astrcode_core::types::SessionId>, ErrorPayload> {
     // 已确认无环的后缀无需重复遍历；新路径的环检测在 collect_parent_chain 内完成。
-    let mut resolved = HashSet::with_capacity(parents.len());
+    let mut resolved = HashSet::with_capacity_and_hasher(parents.len(), Default::default());
     for session_id in parents.keys() {
         if resolved.contains(session_id) {
             continue;
@@ -643,7 +639,7 @@ async fn visible_history_sessions(
         resolved.extend(path);
     }
 
-    let mut children: HashMap<_, Vec<_>> = HashMap::new();
+    let mut children: HashMap<_, Vec<_>> = HashMap::default();
     for (session_id, parent_session_id) in parents {
         if let Some(parent_session_id) = parent_session_id {
             children
@@ -652,7 +648,7 @@ async fn visible_history_sessions(
                 .push(session_id);
         }
     }
-    let mut visible = HashSet::new();
+    let mut visible = HashSet::default();
     let mut pending = vec![caller_session_id];
     while let Some(session_id) = pending.pop() {
         if !visible.insert((*session_id).clone()) {
@@ -1249,7 +1245,7 @@ mod tests {
     #[tokio::test]
     async fn history_visibility_uses_lineage_and_rejects_cycles() {
         let id = astrcode_core::types::SessionId::new;
-        let parents = HashMap::from([
+        let parents = HashMap::from_iter([
             (id("root"), None),
             (id("child"), Some(id("root"))),
             (id("grandchild"), Some(id("child"))),
@@ -1260,16 +1256,16 @@ mod tests {
             visible_history_sessions(&id("root"), &parents)
                 .await
                 .expect("valid lineage"),
-            HashSet::from([id("root"), id("child"), id("grandchild")])
+            HashSet::from_iter([id("root"), id("child"), id("grandchild")])
         );
 
         for cycle in [
-            HashMap::from([(id("root"), Some(id("root")))]),
-            HashMap::from([
+            HashMap::from_iter([(id("root"), Some(id("root")))]),
+            HashMap::from_iter([
                 (id("root"), Some(id("child"))),
                 (id("child"), Some(id("root"))),
             ]),
-            HashMap::from([
+            HashMap::from_iter([
                 (id("cycle-a"), Some(id("cycle-b"))),
                 (id("cycle-b"), Some(id("cycle-a"))),
             ]),

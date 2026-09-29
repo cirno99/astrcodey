@@ -8,6 +8,7 @@ description = "LLM context window management: token estimation and summary compa
 [dependencies]
 astrcode-core = { path = "../astrcode-core" }
 serde_json = { workspace = true }
+rustc-hash = { workspace = true }
 tokio = { workspace = true, features = ["rt"] }
 tracing = { workspace = true }
 

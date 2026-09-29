@@ -6,7 +6,7 @@
 
 mod events;
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use agent_client_protocol::{
     Agent, ByteStreams, Client, ConnectionTo, Dispatch, Error, Responder,
@@ -18,6 +18,7 @@ use agent_client_protocol::{
     },
 };
 use astrcode_core::{event::Event, types::SessionId};
+use rustc_hash::FxHashSet as HashSet;
 use tokio::sync::broadcast;
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
@@ -154,7 +155,7 @@ async fn handle_prompt(
         .await
         .map_err(handler_error_to_acp)?;
 
-    let mut accepted_sessions = HashSet::new();
+    let mut accepted_sessions = HashSet::default();
     accepted_sessions.insert(session_id.clone());
     let acp_session_id = session_id;
 
@@ -468,7 +469,7 @@ mod tests {
             },
         );
 
-        let mut accepted = HashSet::new();
+        let mut accepted = HashSet::default();
         accepted.insert(session_id);
         assert!(!event_belongs_to_prompt(&event, &accepted, &turn_id));
     }
@@ -479,7 +480,7 @@ mod tests {
         let child_session = SessionId::from("child-1");
         let turn_id = TurnId::from("turn-1");
 
-        let mut accepted = HashSet::new();
+        let mut accepted = HashSet::default();
         accepted.insert(parent_session.clone());
 
         let parent_event = live_event(
@@ -512,7 +513,7 @@ mod tests {
         let unrelated_session = SessionId::from("session-2");
         let turn_id = TurnId::from("turn-1");
 
-        let mut accepted = HashSet::new();
+        let mut accepted = HashSet::default();
         accepted.insert(session_id);
 
         // Event from unrelated session with None turn_id should be rejected

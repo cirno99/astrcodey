@@ -1,9 +1,10 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use astrcode_extension_sdk::runtime_ports::{
     ToolCatalogCompleteness, ToolCatalogScope, ToolCatalogSnapshot,
 };
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio::{sync::watch, time::Instant};
 
 const PARTIAL_RETRY_AFTER: Duration = Duration::from_secs(30);

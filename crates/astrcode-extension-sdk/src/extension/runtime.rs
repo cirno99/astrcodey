@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     future::Future,
     panic::AssertUnwindSafe,
     sync::{Arc, Mutex},
@@ -7,6 +6,7 @@ use std::{
 };
 
 use futures_util::FutureExt;
+use rustc_hash::FxHashMap as HashMap;
 use serde::de::IntoDeserializer;
 use tokio::{
     sync::{Notify, oneshot, watch},

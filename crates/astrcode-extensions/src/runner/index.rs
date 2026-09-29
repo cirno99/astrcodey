@@ -1,9 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_extension_sdk::{
     extension::*,
     tool::{ToolDefinition, ToolExecutionPolicy, ToolPromptMetadata},
 };
+use rustc_hash::FxHashMap as HashMap;
 
 use super::{
     ExtensionRunner, HostedExtension, retirement::ExtensionIndexLease,
@@ -108,7 +109,7 @@ pub(super) fn build_handler_index<'a>(
     let mut keybindings = Vec::new();
     let mut status_items = Vec::new();
     let mut http_routes = Vec::new();
-    let mut indexed_extensions = HashMap::new();
+    let mut indexed_extensions = HashMap::default();
     let mut ordered_extensions = extensions.into_iter().collect::<Vec<_>>();
     let mut publication_leases = Vec::with_capacity(ordered_extensions.len());
     ordered_extensions.sort_by(|left, right| left.manifest.id().cmp(right.manifest.id()));
@@ -297,7 +298,7 @@ where
     K: std::hash::Hash + Eq,
 {
     handlers.sort_by_key(|handler| std::cmp::Reverse(handler.1));
-    let mut grouped: HashMap<K, Vec<T>> = HashMap::new();
+    let mut grouped: HashMap<K, Vec<T>> = HashMap::default();
     for (event, _, handler) in handlers {
         grouped.entry(event).or_default().push(handler);
     }

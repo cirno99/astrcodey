@@ -1,6 +1,6 @@
 //! Project memory: recall at turn end, deliver on the next turn's first LLM request.
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use astrcode_extension_sdk::{
     extension::{
@@ -12,6 +12,7 @@ use astrcode_extension_sdk::{
     llm::LlmMessage,
 };
 use parking_lot::{Mutex, RwLock};
+use rustc_hash::FxHashMap as HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{config::MemoryConfig, prompts, store::MemoryStorePool};

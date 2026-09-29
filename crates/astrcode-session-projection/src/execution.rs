@@ -1,12 +1,13 @@
 //! Turn、step、输入、工具调用与审批的执行状态投影。
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use astrcode_core::{
     event::{DurableEventPayload, Phase, StoredEvent},
     types::{ToolCallId, TurnId},
     user_input::UserInput,
 };
+use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

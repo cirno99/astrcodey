@@ -1,15 +1,13 @@
 //! Immutable tool registry snapshots owned by the session layer.
 
-use std::{
-    collections::{BTreeMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 
 use astrcode_core::tool::{
     ExecutionMode, SessionToolSelection, Tool, ToolDefinition, ToolError, ToolExecutionContext,
     ToolExecutionPolicy, ToolExecutionResult, ToolPlanningContext, ToolPromptMetadata,
     access::ToolPlan,
 };
+use rustc_hash::FxHashSet as HashSet;
 use serde_json::Value;
 
 /// Registered tool plus the metadata cached from its implementation.
@@ -162,7 +160,7 @@ impl ToolRegistry {
             ));
         };
 
-        let mut seen = HashSet::new();
+        let mut seen = HashSet::default();
         for name in tool_names {
             let group = self
                 .find_prompt_metadata(name)

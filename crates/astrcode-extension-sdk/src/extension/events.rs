@@ -1,10 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     event::{EventDeliveryReceipt, EventSendError},
     types::{EventId, SessionId},
 };
 use async_trait::async_trait;
+use rustc_hash::FxHashMap as HashMap;
 use serde::Serialize;
 
 use super::{

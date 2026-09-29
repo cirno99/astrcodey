@@ -6,7 +6,6 @@
 //! overhead from turn and session paths.
 
 use std::{
-    collections::{HashMap, HashSet},
     future::Future,
     process::Stdio,
     sync::{
@@ -16,6 +15,7 @@ use std::{
     time::Duration,
 };
 
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::Value;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -169,7 +169,7 @@ impl Drop for StdioPooledClient {
 impl McpProcessPool {
     pub(crate) fn new(timeout: Duration) -> Self {
         Self {
-            pool: AsyncMutex::new(HashMap::new()),
+            pool: AsyncMutex::new(HashMap::default()),
             timeout,
         }
     }

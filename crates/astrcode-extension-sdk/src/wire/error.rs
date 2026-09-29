@@ -113,13 +113,13 @@ impl Display for WireErrorCode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use rustc_hash::FxHashSet as HashSet;
 
     use super::WireErrorCode;
 
     #[test]
     fn catalog_is_unique_and_round_trips_while_unknown_codes_remain_unknown() {
-        let mut strings = HashSet::new();
+        let mut strings = HashSet::default();
         for code in WireErrorCode::ALL {
             assert!(strings.insert(code.as_str()), "duplicate code: {code}");
             assert_eq!(WireErrorCode::parse(code.as_str()), Some(*code));

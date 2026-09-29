@@ -10,6 +10,7 @@ astrcode-core = { path = "../astrcode-core" }
 chrono = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+rustc-hash = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

@@ -19,9 +19,8 @@
 //! Native session 会在下一轮把 MCP 断连/重连、skill 文件变化等反映到 prompt；
 //! fork 继承的 prompt 则保持创建时文本不变。
 
-use std::collections::HashMap;
-
 use astrcode_core::tool::{ToolDefinition, ToolPromptMetadata};
+use rustc_hash::FxHashMap as HashMap;
 
 mod prompt_files;
 mod provider_messages;
@@ -452,7 +451,7 @@ mod tests {
             tools: &[],
             extension_blocks: vec![],
             extra_instructions: None,
-            tool_prompt_metadata: std::collections::HashMap::new(),
+            tool_prompt_metadata: rustc_hash::FxHashMap::default(),
         }
     }
 
@@ -505,7 +504,7 @@ mod tests {
                 },
             ],
             extra_instructions: Some("extra body".into()),
-            tool_prompt_metadata: std::collections::HashMap::from([
+            tool_prompt_metadata: rustc_hash::FxHashMap::from_iter([
                 (
                     "mcp__demo__search".into(),
                     ToolPromptMetadata::new("").prompt_tag(ToolPromptTag::System),
@@ -585,7 +584,7 @@ mod tests {
             tools: &[],
             extension_blocks: vec![],
             extra_instructions: None,
-            tool_prompt_metadata: std::collections::HashMap::new(),
+            tool_prompt_metadata: rustc_hash::FxHashMap::default(),
         };
 
         let prompt = build_system_prompt(&input);
@@ -629,7 +628,7 @@ mod tests {
             tools: &tools,
             extension_blocks: vec![],
             extra_instructions: None,
-            tool_prompt_metadata: std::collections::HashMap::new(),
+            tool_prompt_metadata: rustc_hash::FxHashMap::default(),
         };
 
         let prompt = build_system_prompt(&input);
@@ -679,7 +678,7 @@ mod tests {
                 },
             ],
             extra_instructions: None,
-            tool_prompt_metadata: std::collections::HashMap::new(),
+            tool_prompt_metadata: rustc_hash::FxHashMap::default(),
         };
         let mut changed = base.clone();
         changed.working_dir = "/two".into();

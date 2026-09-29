@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-
 use astrcode_core::{
     event::{DurableEventPayload, Event, Phase},
     types::SessionId,
 };
 use astrcode_protocol::{agent_session_link::AgentSessionUpdateDto, http::ConversationDeltaDto};
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::server_event_bus::agent_session_progress;
 
@@ -102,8 +101,8 @@ mod tests {
     fn tracks_phase_and_deduplicates_progress() {
         let initial = SessionId::from("child-initial");
         let mut tracker = ChildSessionTracker::new(
-            HashMap::from([(initial.clone(), initial.clone())]),
-            HashMap::from([(initial.clone(), Phase::Thinking)]),
+            HashMap::from_iter([(initial.clone(), initial.clone())]),
+            HashMap::from_iter([(initial.clone(), Phase::Thinking)]),
         );
 
         let duplicate = durable(initial.clone(), DurableEventPayload::TurnStarted);

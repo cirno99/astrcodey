@@ -1,12 +1,13 @@
 //! Turn pipeline stage state shared by the turn runner.
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     llm::{LlmContent, LlmMessage, LlmRole, provider_visible_shared_messages},
     tool::ToolDefinition,
 };
 use astrcode_session_projection::ActiveStepView;
+use rustc_hash::FxHashSet as HashSet;
 
 use crate::{
     deferred_tools::{ToolSnapshot, activate_deferred_tools, provider_visible_tools},
@@ -147,7 +148,7 @@ impl TurnState {
                 prompt_metadata: tool.prompt_metadata,
             })
             .collect::<Vec<_>>();
-        let active_deferred_tools = HashSet::new();
+        let active_deferred_tools = HashSet::default();
         let visible_tools = provider_visible_tools(&all_tools, &active_deferred_tools);
         let tools_token_estimate =
             astrcode_context::token_estimate::estimate_tool_definition_tokens(

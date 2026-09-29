@@ -1,11 +1,12 @@
 //! Structured memory index (`memory_index.json`) for recall and dedup/upsert.
 
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::BTreeMap,
     path::{Path, PathBuf},
 };
 
 use chrono::Utc;
+use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -312,7 +313,7 @@ impl MemoryIndex {
         let pattern_lower = pattern.to_lowercase();
         let mut index = self.load_index()?;
         let mut removed = Vec::new();
-        let mut removed_ids = HashSet::new();
+        let mut removed_ids = HashSet::default();
 
         index.records.retain(|r| {
             if r.content.to_lowercase().contains(&pattern_lower) {
@@ -396,7 +397,7 @@ impl MemoryIndex {
         let query_lower = query.to_lowercase();
         let norm_query = normalize_content(query);
 
-        let mut entity_boost_ids = HashSet::new();
+        let mut entity_boost_ids = HashSet::default();
         for (entity, mem_ids) in &entities.links {
             if query_lower.contains(entity) {
                 entity_boost_ids.extend(mem_ids.iter().cloned());
@@ -433,7 +434,7 @@ impl MemoryIndex {
         let entities = self.load_entities()?;
         let query_lower = query.to_lowercase();
         let index = self.load_index()?;
-        let mut ids = HashSet::new();
+        let mut ids = HashSet::default();
         for (entity, mem_ids) in &entities.links {
             if query_lower.contains(entity) {
                 ids.extend(mem_ids.iter().cloned());

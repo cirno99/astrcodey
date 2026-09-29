@@ -372,7 +372,6 @@ pub async fn invoke_host(capability: &str, input: Value) -> Result<Value, ErrorP
 #[cfg(test)]
 mod host_tests {
     use std::{
-        collections::HashSet,
         future::Future,
         sync::{
             Arc, Mutex,
@@ -381,6 +380,7 @@ mod host_tests {
     };
 
     use async_trait::async_trait;
+    use rustc_hash::FxHashSet as HashSet;
     use serde_json::{Value, json};
     use tokio_util::sync::CancellationToken;
 

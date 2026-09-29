@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn capability_names_round_trip_and_wire_strings_are_stable() {
-        let mut wires = std::collections::HashSet::new();
+        let mut wires = rustc_hash::FxHashSet::default();
         for capability in [
             ExtensionCapability::SessionControl,
             ExtensionCapability::SessionCommand,

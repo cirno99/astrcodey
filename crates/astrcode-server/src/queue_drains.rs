@@ -1,7 +1,8 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use astrcode_core::types::SessionId;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio_util::sync::CancellationToken;
 
 const INITIAL_RETRY_DELAY: Duration = Duration::from_millis(200);

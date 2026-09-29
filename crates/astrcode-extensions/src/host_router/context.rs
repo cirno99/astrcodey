@@ -1,7 +1,6 @@
 //! Extension-scoped state and event capabilities.
 
 use std::{
-    collections::HashMap,
     io::Read as _,
     path::{Path, PathBuf},
     sync::{Arc, Weak},
@@ -21,6 +20,7 @@ use astrcode_extension_sdk::{
     hostpaths::write_file_atomic,
     wire::{ErrorPayload, WireErrorCode},
 };
+use rustc_hash::FxHashMap as HashMap;
 use serde_json::Value;
 use tokio::sync::{Mutex as AsyncMutex, OwnedMutexGuard};
 

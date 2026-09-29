@@ -5,9 +5,8 @@
 //! [`crate::common::DoneOnce`] 与 [`crate::common::TextDeltaAccumulator`]，
 //! 与 OpenAI parser 共享同一实现。
 
-use std::collections::{HashMap, HashSet};
-
 use astrcode_core::llm::{LlmEvent, LlmTokenUsage, LlmTokenUsageSource};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::sync::mpsc;
 
 use crate::common::{

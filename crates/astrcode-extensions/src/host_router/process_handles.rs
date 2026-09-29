@@ -1,6 +1,6 @@
 //! Session-owned process handles.
 
-use std::{collections::HashMap, process::Stdio, sync::Arc, time::Duration};
+use std::{process::Stdio, sync::Arc, time::Duration};
 
 use astrcode_extension_sdk::{
     host::{
@@ -12,6 +12,7 @@ use astrcode_extension_sdk::{
     wire::{ErrorPayload, WireErrorCode},
 };
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWriteExt},
     sync::{Mutex as AsyncMutex, Notify, OwnedSemaphorePermit, Semaphore},
@@ -232,9 +233,9 @@ pub(super) struct ProcessHandleStore {
 impl Default for ProcessHandleStore {
     fn default() -> Self {
         Self {
-            entries: Mutex::new(HashMap::new()),
-            session_process_permits: Mutex::new(HashMap::new()),
-            session_handle_permits: Mutex::new(HashMap::new()),
+            entries: Mutex::new(HashMap::default()),
+            session_process_permits: Mutex::new(HashMap::default()),
+            session_handle_permits: Mutex::new(HashMap::default()),
         }
     }
 }

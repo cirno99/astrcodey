@@ -1,7 +1,6 @@
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
+
+use rustc_hash::FxHashMap as HashMap;
 
 #[derive(Debug, Clone)]
 pub(crate) struct FetchCacheEntry {
@@ -26,7 +25,7 @@ impl FetchUrlCache {
             ttl: Duration::from_secs(ttl_secs.max(1)),
             max_entries: max_entries.max(1),
             max_bytes: max_bytes.max(1),
-            entries: HashMap::new(),
+            entries: HashMap::default(),
             total_bytes: 0,
         }
     }

@@ -1,8 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use astrcode_core::{
     event::DurableEventPayload,
@@ -10,6 +6,7 @@ use astrcode_core::{
     tool::{ExecutionMode, ToolDefinition},
     types::ToolCallId,
 };
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::{sync::oneshot, task::JoinSet};
 
 use super::{ToolCalls, events::finish_tool_call};
@@ -282,7 +279,7 @@ impl ToolCalls {
         // 连续性不变式：parallel_batch 条目按 position 升序逐调用压入（每个并行调用
         // 恰好一条），且批次只在遇到非并行调用时整体 flush——因此
         // `calls[batch_start..batch_end]` 与批次条目一一对应，可按下标回填 outcome。
-        let mut outcomes = HashMap::new();
+        let mut outcomes = HashMap::default();
 
         self.flush_parallel_batch(parallel_batch, tools, &mut outcomes)
             .await?;
@@ -362,7 +359,7 @@ impl ToolCalls {
         position: usize,
         outcome: ToolExecutionOutcome,
     ) -> Result<Vec<String>, TurnError> {
-        let mut outcomes = HashMap::new();
+        let mut outcomes = HashMap::default();
         outcomes.insert(input.batch.calls[position].index, outcome);
         self.commit_tool_outcomes(
             &input.batch.calls[position..position + 1],

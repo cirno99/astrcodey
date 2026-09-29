@@ -1,7 +1,6 @@
 //! EvalRunner — 编排器，管理 server 生命周期 + 并发执行 case。
 
 use std::{
-    collections::{HashMap, HashSet},
     fs::OpenOptions,
     io::{BufRead, BufReader, Write},
     panic::AssertUnwindSafe,
@@ -10,6 +9,7 @@ use std::{
 };
 
 use futures_util::{FutureExt, StreamExt, stream::FuturesUnordered};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::sync::Semaphore;
 
 use crate::{
@@ -92,7 +92,8 @@ impl EvalRunner {
             .enumerate()
             .map(|(index, case)| (case.id.as_str(), index))
             .collect();
-        let mut completed_case_ids = HashSet::with_capacity(self.resumed_results.len());
+        let mut completed_case_ids =
+            HashSet::with_capacity_and_hasher(self.resumed_results.len(), Default::default());
         let mut indexed_results = Vec::with_capacity(result_capacity);
         let mut retained_patch_bytes: usize = 0;
 

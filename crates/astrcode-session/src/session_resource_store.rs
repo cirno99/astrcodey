@@ -1,7 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::types::SessionId;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::SessionRuntimeState;
 

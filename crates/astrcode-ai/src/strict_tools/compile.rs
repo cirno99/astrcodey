@@ -1,11 +1,10 @@
 //! 将工具 schema 编译为各 provider 的 strict JSON Schema 方言。
 
-use std::collections::HashSet;
-
 use astrcode_core::{
     llm::LlmError,
     tool::{ToolDefinition, ToolOrigin},
 };
+use rustc_hash::FxHashSet as HashSet;
 use serde_json::{Map, Value};
 
 use super::{

@@ -374,7 +374,7 @@ const CHANNEL_CAPACITY: usize = 1024;
 
 #[cfg(test)]
 static FAIL_NEXT_OPEN_SYNC_PATHS: std::sync::OnceLock<
-    std::sync::Mutex<std::collections::HashSet<PathBuf>>,
+    std::sync::Mutex<rustc_hash::FxHashSet<PathBuf>>,
 > = std::sync::OnceLock::new();
 
 enum WriteCommand {

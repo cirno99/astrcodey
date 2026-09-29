@@ -2,7 +2,7 @@
 //!
 //! Session 事件按 conversation 分发，非事件通知走全局通道。
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     event::{
@@ -14,6 +14,7 @@ use astrcode_protocol::events::ClientNotification;
 use astrcode_session::SessionEventObserver;
 use astrcode_session_projection::SessionReadModel;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::broadcast;
 
 use crate::protocol_mapping::session_snapshot;
@@ -65,9 +66,9 @@ impl ServerEventBus {
         Self {
             all_notifications,
             global_notifications,
-            conversation_events: Mutex::new(HashMap::new()),
-            session_routes: Mutex::new(HashMap::new()),
-            streaming: Mutex::new(HashMap::new()),
+            conversation_events: Mutex::new(HashMap::default()),
+            session_routes: Mutex::new(HashMap::default()),
+            streaming: Mutex::new(HashMap::default()),
             downstream_observers: Mutex::new(Vec::new()),
         }
     }

@@ -1,7 +1,6 @@
 //! Session-scoped custom-event delivery, replay, retry, and quiescence.
 
 use std::{
-    collections::{HashMap, HashSet},
     sync::{
         Arc, Weak,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -18,6 +17,7 @@ use astrcode_extension_sdk::extension::{
     internal::{custom_event_context, custom_event_subscription_matches},
 };
 use astrcode_storage::{EventConsumerCheckpointOutcome, EventConsumerFailureOutcome, SessionStore};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::sync::{Notify, OwnedSemaphorePermit, mpsc};
 
 use super::{ExtensionRunner, ExtensionView, host_invoker::ExtensionCallContextInput};

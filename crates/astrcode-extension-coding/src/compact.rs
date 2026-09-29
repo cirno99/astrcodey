@@ -1,7 +1,5 @@
 //! Coding-owned context retained across transcript compaction.
 
-use std::collections::{HashMap, HashSet};
-
 use astrcode_extension_sdk::{
     extension::{
         CompactContributions, CompactRetainedContext, ExtensionCall, ExtensionError,
@@ -10,6 +8,7 @@ use astrcode_extension_sdk::{
     host::{HostWorkspaceReadOutput, HostWorkspaceReadRequest},
     llm::{LlmContent, LlmMessage, LlmRole},
 };
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 const READ_TOOL_NAME: &str = "read";
 const COMPACT_PRIORITY: i32 = 50;
@@ -53,7 +52,7 @@ impl PreCompactHandler for CodingPreCompactHandler {
 }
 
 fn recent_successful_read_paths(messages: &[LlmMessage], limit: usize) -> Vec<String> {
-    let mut calls = HashMap::new();
+    let mut calls = HashMap::default();
     let mut successful_paths = Vec::new();
 
     for message in messages {
@@ -98,7 +97,7 @@ fn recent_successful_read_paths(messages: &[LlmMessage], limit: usize) -> Vec<St
         }
     }
 
-    let mut seen = HashSet::new();
+    let mut seen = HashSet::default();
     let mut selected = successful_paths
         .into_iter()
         .rev()

@@ -1,6 +1,6 @@
 //! Session lifecycle service — creation, open, and child session saga.
 
-use std::{collections::HashSet, panic::AssertUnwindSafe, sync::Arc};
+use std::{panic::AssertUnwindSafe, sync::Arc};
 
 use astrcode_core::{
     event::{DurableEvent, DurableEventPayload, ParentSessionRef, SessionStarted},
@@ -10,6 +10,7 @@ use astrcode_core::{
 use astrcode_extension_sdk::extension::LifecycleEvent;
 use astrcode_session_projection::SessionReadModel;
 use futures_util::FutureExt;
+use rustc_hash::FxHashSet as HashSet;
 
 use crate::{
     payload::agent_session_failed_payload,
@@ -119,7 +120,7 @@ pub(crate) async fn resolve_effective_tool_selection(
     session_id: &SessionId,
     model: &SessionReadModel,
 ) -> Result<Option<SessionToolSelection>, SessionError> {
-    let mut visited = HashSet::from([session_id.clone()]);
+    let mut visited = HashSet::from_iter([session_id.clone()]);
     let mut selection = Some(model.identity.tool_selection.clone());
     let mut parent_session_id = model
         .identity

@@ -1,7 +1,6 @@
 //! Worker 侧 handler 注册表。
 
 use std::{
-    collections::HashMap,
     future::Future,
     path::{Path, PathBuf},
     pin::Pin,
@@ -16,6 +15,7 @@ use astrcode_extension_sdk::{
         ManifestHttpRoute, ManifestTool, ManifestToolMode,
     },
 };
+use rustc_hash::FxHashMap as HashMap;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -510,13 +510,13 @@ impl HandlerRegistry {
         Self {
             extension_id: extension_id.into(),
             manifest: InitializeManifest::default(),
-            tools: HashMap::new(),
-            hooks: HashMap::new(),
-            continuation_hooks: HashMap::new(),
-            custom_events: HashMap::new(),
-            commands: HashMap::new(),
-            http_routes: HashMap::new(),
-            services: HashMap::new(),
+            tools: HashMap::default(),
+            hooks: HashMap::default(),
+            continuation_hooks: HashMap::default(),
+            custom_events: HashMap::default(),
+            commands: HashMap::default(),
+            http_routes: HashMap::default(),
+            services: HashMap::default(),
         }
     }
 

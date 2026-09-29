@@ -1,7 +1,7 @@
 //! 扩展加载器 — 从全局和项目目录发现并加载 s5r 子进程扩展。
 
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::BTreeMap,
     future::Future,
     path::{Path, PathBuf},
     pin::Pin,
@@ -16,6 +16,7 @@ use astrcode_extension_sdk::{
     transport::{TransportFeature, TransportProfile},
     wire::protocol::S5R_VERSION,
 };
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -139,8 +140,8 @@ pub async fn prepare_extension_generation(
         .map(|current| (current.key.as_str(), current))
         .collect::<HashMap<_, _>>();
     let mut discovered = Vec::new();
-    let mut source_keys = HashSet::new();
-    let mut extension_ids = HashSet::new();
+    let mut source_keys = HashSet::default();
+    let mut extension_ids = HashSet::default();
     let mut errors = Vec::new();
 
     for source in sources {

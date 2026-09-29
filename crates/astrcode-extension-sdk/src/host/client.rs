@@ -56,12 +56,12 @@ impl TypedModelClient<ExtensionHost> {
 #[cfg(test)]
 mod tests {
     use std::{
-        collections::HashSet,
         future::Future,
         sync::{Arc, Mutex},
     };
 
     use async_trait::async_trait;
+    use rustc_hash::FxHashSet as HashSet;
     use serde_json::Value;
 
     use super::*;

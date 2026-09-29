@@ -1,6 +1,6 @@
 //! 看板自动化：领取 `ready` 卡片，投递分析 / 实施 turn，直到卡片进入终态。
 
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use astrcode_extension_sdk::{
     extension::ExtensionTasks,
@@ -11,6 +11,7 @@ use astrcode_extension_sdk::{
     },
 };
 use parking_lot::Mutex;
+use rustc_hash::FxHashSet as HashSet;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -56,7 +57,7 @@ impl KanbanRuntime {
             config,
             store,
             session_control,
-            live_cards: Mutex::new(HashSet::new()),
+            live_cards: Mutex::new(HashSet::default()),
         }
     }
 

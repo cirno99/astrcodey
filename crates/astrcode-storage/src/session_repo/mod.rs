@@ -25,7 +25,6 @@ mod store;
 mod tests;
 
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -37,6 +36,7 @@ use astrcode_core::{
 };
 use astrcode_session_projection::{ProjectionError, SessionReadModel, replay};
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::{RwLock, Semaphore};
 
 use self::{
@@ -185,8 +185,8 @@ impl FileSystemSessionRepository {
         }
         Self {
             owner: Arc::new(()),
-            sessions: RwLock::new(HashMap::new()),
-            open_lanes: Mutex::new(HashMap::new()),
+            sessions: RwLock::new(HashMap::default()),
+            open_lanes: Mutex::new(HashMap::default()),
             projects_base,
         }
     }

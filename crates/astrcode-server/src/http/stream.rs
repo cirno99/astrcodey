@@ -8,7 +8,7 @@
 mod child_sessions;
 mod replay;
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     event::{DurableEventPayload, Event, EventPayload, LiveEventPayload, Phase},
@@ -33,6 +33,7 @@ use axum::{
 use child_sessions::ChildSessionTracker;
 use futures_util::{StreamExt, stream};
 use replay::{parse_replay_cursor, replay_after_cursor};
+use rustc_hash::FxHashMap as HashMap;
 use serde::Deserialize;
 use tokio::sync::broadcast;
 use uuid::Uuid;

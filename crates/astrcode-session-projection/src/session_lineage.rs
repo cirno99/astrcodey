@@ -4,9 +4,10 @@
 //! 父链上溯;各调用点注入自己的 parent 解析策略(内存表、active/recycled 存储读),
 //! 错误码与错误消息由调用方在各自边界映射。
 
-use std::{collections::HashSet, future::Future};
+use std::future::Future;
 
 use astrcode_core::types::SessionId;
+use rustc_hash::FxHashSet as HashSet;
 
 /// 父链上溯时检测到环(session 元数据损坏)。`Display` 消息是线缆契约的一部分,
 /// host/server 两侧的历史实现均逐字使用该消息,不得改动。
@@ -35,7 +36,7 @@ where
     Fut: Future<Output = Result<Option<SessionId>, E>>,
 {
     let mut chain = Vec::new();
-    let mut visited = HashSet::new();
+    let mut visited = HashSet::default();
     let mut current = start.clone();
     loop {
         if !visited.insert(current.clone()) {

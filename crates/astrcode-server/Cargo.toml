@@ -33,6 +33,7 @@ astrcode-log = { path = "../astrcode-log" }
 tokio = { workspace = true, features = ["sync", "time", "fs", "net", "rt-multi-thread", "macros", "process", "io-util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+rustc-hash = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

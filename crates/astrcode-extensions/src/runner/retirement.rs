@@ -1,5 +1,5 @@
 #[cfg(any(test, feature = "testing"))]
-use std::{collections::HashMap, sync::Weak};
+use std::sync::Weak;
 use std::{
     panic::AssertUnwindSafe,
     sync::{
@@ -13,6 +13,8 @@ use astrcode_extension_sdk::extension::{
     internal::{cancel_extension_tasks, extension_stop_context, wait_extension_tasks},
 };
 use futures_util::FutureExt;
+#[cfg(any(test, feature = "testing"))]
+use rustc_hash::FxHashMap as HashMap;
 use tokio::{
     sync::{Mutex as AsyncMutex, Notify, OwnedMutexGuard, oneshot},
     task::JoinSet,
@@ -298,7 +300,7 @@ impl RetirementSupervisor {
             pending: Arc::new(AtomicUsize::new(0)),
             completed: Arc::new(Notify::new()),
             #[cfg(any(test, feature = "testing"))]
-            operation_gates: parking_lot::Mutex::new(HashMap::new()),
+            operation_gates: parking_lot::Mutex::new(HashMap::default()),
             next_retirement_id: AtomicU64::new(1),
             completed_errors: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }

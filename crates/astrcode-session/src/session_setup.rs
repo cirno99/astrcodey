@@ -4,7 +4,7 @@
 //! `Session` 自己的工具边界和事件日志（追加 `SystemPromptConfigured`），把它们搬到
 //! session crate 后能让 Session 真正掌控自己的运行时。
 
-use std::{collections::HashMap, sync::OnceLock};
+use std::sync::OnceLock;
 
 use astrcode_context::prompt_engine::{
     ExtensionPromptBlock, ExtensionSection, PromptEngine, SystemPromptInput, load_prompt_files,
@@ -18,6 +18,7 @@ use astrcode_extension_sdk::{
     runtime_ports::{PromptContributor, ToolCatalogProvider, ToolCatalogScope},
     shell::resolve_shell,
 };
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::ToolRegistry;
 

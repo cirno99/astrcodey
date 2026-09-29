@@ -1,7 +1,7 @@
 //! Host-side S5R 3.0 process session.
 
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::BTreeSet,
     path::Path,
     pin::Pin,
     process::Stdio,
@@ -26,6 +26,7 @@ use astrcode_s5r_runtime::{
 };
 use futures_util::Stream;
 use parking_lot::{Mutex, RwLock};
+use rustc_hash::FxHashMap as HashMap;
 use serde_json::{Map, Value, json};
 use tokio::{process::Command, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
@@ -260,7 +261,7 @@ impl S5rV3Session {
             router,
             registration,
             reentrancy: Arc::new(AtomicU32::new(0)),
-            invoke_contexts: RwLock::new(HashMap::new()),
+            invoke_contexts: RwLock::new(HashMap::default()),
             detached_invoke_context: RwLock::new(None),
         });
         let driver_shutdown = CancellationToken::new();

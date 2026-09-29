@@ -10,7 +10,7 @@ use crate::{
 pub(crate) const USER_CATEGORY: &str = "user_pref";
 
 fn push_unique_labeled(
-    seen: &mut std::collections::HashSet<String>,
+    seen: &mut rustc_hash::FxHashSet<String>,
     out: &mut Vec<String>,
     prefix: &str,
     line: String,
@@ -81,7 +81,7 @@ impl ScopedMemoryStores {
 
     pub(crate) fn search(&self, query: &str, limit: usize) -> std::io::Result<Vec<String>> {
         let half = limit.div_ceil(2);
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = rustc_hash::FxHashSet::default();
         let mut out = Vec::new();
 
         for line in self.user.search(query, half)? {

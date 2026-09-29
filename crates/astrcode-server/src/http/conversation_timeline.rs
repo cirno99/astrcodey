@@ -4,7 +4,7 @@
 //! The current implementation derives bounded pages from durable events; a
 //! materialized backend can replace it without changing the wire contract.
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     event::{DurableEventPayload, Event, StoredEvent},
@@ -12,6 +12,7 @@ use astrcode_core::{
 };
 use astrcode_protocol::http::ConversationBlockDto;
 use astrcode_storage::{SessionStore, StorageError};
+use rustc_hash::FxHashSet as HashSet;
 
 use super::projection::blocks::{
     block_from_payload, persisted_transcript_blocks, streaming_tool_call_block,

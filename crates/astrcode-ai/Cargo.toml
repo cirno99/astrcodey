@@ -9,6 +9,7 @@ description = "LLM provider integrations and streaming"
 astrcode-core = { path = "../astrcode-core" }
 tokio = { workspace = true, features = ["sync", "time", "rt-multi-thread", "macros"] }
 serde_json = { workspace = true }
+rustc-hash = { workspace = true }
 async-trait = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true, features = ["stream", "json"] }

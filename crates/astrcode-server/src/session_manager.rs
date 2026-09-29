@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     future::Future,
     panic::AssertUnwindSafe,
     sync::{Arc, Weak},
@@ -22,6 +21,7 @@ use astrcode_session_projection::{AgentSessionLinkView, SessionReadModel, Sessio
 use astrcode_storage::{SessionStore, StorageError};
 use futures_util::FutureExt;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio_util::sync::CancellationToken;
 
 use crate::{

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use astrcode_core::{
     config::ContextSettings,
@@ -12,6 +12,7 @@ use astrcode_core::{
 };
 use astrcode_storage::SessionStore;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::{OnceCell, oneshot};
 use tokio_util::sync::CancellationToken;
 
@@ -136,7 +137,7 @@ impl ApprovalRuntime {
     fn new() -> Self {
         Self {
             history: Arc::new(ApprovalHistoryStore::default()),
-            pending: Mutex::new(HashMap::new()),
+            pending: Mutex::new(HashMap::default()),
         }
     }
 

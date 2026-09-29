@@ -1,8 +1,7 @@
 //! 各 provider strict 工具 schema 的限额与合规校验。
 
-use std::collections::{HashMap, HashSet};
-
 use astrcode_core::{llm::LlmError, tool::ToolDefinition};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::{Map, Value};
 
 use super::{
@@ -464,7 +463,7 @@ fn validate_anthropic_schema(
             if !required.contains(name.as_str()) {
                 stats.optional_parameters += 1;
             }
-            if is_anthropic_union_parameter(root, property_schema, &mut HashSet::new()) {
+            if is_anthropic_union_parameter(root, property_schema, &mut HashSet::default()) {
                 stats.union_parameters += 1;
             }
         }
@@ -637,7 +636,7 @@ fn validate_local_refs(
 }
 
 fn detect_recursive_refs(tool: &ToolDefinition, root: &Value) -> Result<(), LlmError> {
-    detect_recursive_refs_from(tool, root, root, "$", &mut HashMap::new())
+    detect_recursive_refs_from(tool, root, root, "$", &mut HashMap::default())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -728,7 +727,7 @@ fn required_property_names<'a>(
             &child_path(path, "required"),
             "`required` must be an array",
         )),
-        None => Ok(HashSet::new()),
+        None => Ok(HashSet::default()),
     }
 }
 

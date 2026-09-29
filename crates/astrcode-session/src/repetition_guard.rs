@@ -11,9 +11,11 @@
 //!   内存与单次扫描量都不随输出长度增长。
 
 use std::{
-    collections::{HashMap, VecDeque, hash_map::Entry},
+    collections::{VecDeque, hash_map::Entry},
     sync::Arc,
 };
+
+use rustc_hash::FxHashMap as HashMap;
 
 /// 参与判定的最近片段数。
 const WINDOW_FRAGMENTS: usize = 40;
@@ -85,7 +87,7 @@ impl RepetitionGuard {
         Self {
             stream,
             window: VecDeque::new(),
-            counts: HashMap::new(),
+            counts: HashMap::default(),
             total_chars: 0,
             pending: String::new(),
             scanned: 0,

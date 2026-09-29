@@ -439,7 +439,7 @@ impl MemoryStore {
 
         // Dual-write: same logical entry exists in both MEMORY.md and index.
         // Deduplicate the return value so the caller sees each logical entry once.
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = rustc_hash::FxHashSet::default();
         let mut deduped = Vec::new();
         for entry in index_removed.into_iter().chain(removed) {
             if seen.insert(entry.clone()) {

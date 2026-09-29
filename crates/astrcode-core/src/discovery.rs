@@ -1,6 +1,8 @@
 //! Per-directory caching for extension-side discovery results.
 
-use std::{collections::HashMap, sync::Mutex};
+use std::sync::Mutex;
+
+use rustc_hash::FxHashMap as HashMap;
 
 /// Caches discovery results (skills, agents, ...) keyed by working directory so
 /// repeated tool calls do not rescan the filesystem.
@@ -14,7 +16,7 @@ pub struct DiscoveryCache<V> {
 impl<V> DiscoveryCache<V> {
     pub fn new() -> Self {
         Self {
-            entries: Mutex::new(HashMap::new()),
+            entries: Mutex::new(HashMap::default()),
         }
     }
 }

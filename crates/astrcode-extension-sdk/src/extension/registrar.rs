@@ -1,5 +1,6 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
+use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -480,7 +481,7 @@ impl ExtensionRegistrations {
     fn validate(&mut self, manifest: &ExtensionManifest) -> Result<(), RegistrationError> {
         let extension_id = manifest.id();
         let capabilities = manifest.capabilities();
-        let mut service_keys = HashSet::new();
+        let mut service_keys = HashSet::default();
         for service in &self.services {
             if !service_keys.insert(service.key())
                 || manifest
@@ -572,7 +573,7 @@ impl ExtensionRegistrations {
             }
         }
 
-        let mut tool_names = HashSet::new();
+        let mut tool_names = HashSet::default();
         for registration in &self.tools {
             let name = registration.definition.name.as_str();
             if name.is_empty() {
@@ -589,7 +590,7 @@ impl ExtensionRegistrations {
             }
             tool_names.insert(name);
         }
-        let mut command_names = HashSet::new();
+        let mut command_names = HashSet::default();
         for (command, handler) in &mut self.commands {
             canonicalize_command_name(&mut command.name).map_err(|reason| {
                 invalid_registration(extension_id, format!("command {reason}"))
@@ -668,7 +669,7 @@ impl ExtensionRegistrations {
             }
         }
 
-        let mut status_ids = HashSet::new();
+        let mut status_ids = HashSet::default();
         for item in &self.status_items {
             let id = item.id.as_str();
             if id.is_empty() || has_duplicate_registration_name(status_ids.iter().copied(), id) {
@@ -680,7 +681,7 @@ impl ExtensionRegistrations {
             status_ids.insert(id);
         }
 
-        let mut event_types = HashSet::new();
+        let mut event_types = HashSet::default();
         for event in &self.custom_event_declarations {
             let event_type = event.event_type.as_str();
             if event_type.is_empty()
@@ -709,7 +710,7 @@ impl ExtensionRegistrations {
             }
         }
 
-        let mut subscription_ids = HashSet::new();
+        let mut subscription_ids = HashSet::default();
         for registration in &self.custom_event_subscriptions {
             if let Err(reason) = validate_custom_event_subscription(&registration.subscription) {
                 return Err(invalid_registration(extension_id, reason));

@@ -1,9 +1,6 @@
 //! Shared ordered publication for all session events.
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use astrcode_core::{
     event::{DurableEvent, Event, LiveEvent, StoredEvent},
@@ -11,6 +8,7 @@ use astrcode_core::{
 };
 use astrcode_storage::{SessionEventJournal, StorageError};
 use parking_lot::Mutex;
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::perf_snapshot;
@@ -163,7 +161,7 @@ impl SessionEventSink {
         Self {
             publication: Arc::new(PublicationState {
                 observer,
-                deferred: Mutex::new(HashMap::new()),
+                deferred: Mutex::new(HashMap::default()),
             }),
             state: Mutex::new(SinkState::default()),
         }

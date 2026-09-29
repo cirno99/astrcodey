@@ -4,13 +4,13 @@
 //! 所有读写都经过 [`BoardStore`]，由它串行化读-改-写并保证磁盘是唯一事实来源。
 
 use std::{
-    collections::HashMap,
     fs,
     io::Write as _,
     path::{Path, PathBuf},
 };
 
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use serde::{Deserialize, Serialize};
 
 pub const BOARD_FILE: &str = "board.json";
@@ -126,7 +126,7 @@ impl Board {
 
     /// 按工作目录聚合运行中卡片数，供「同项目串行」判定使用。
     pub fn running_count_by_project(&self) -> HashMap<String, usize> {
-        let mut counts: HashMap<String, usize> = HashMap::new();
+        let mut counts: HashMap<String, usize> = HashMap::default();
         for card in self.cards.iter().filter(|card| card.column.is_running()) {
             *counts.entry(project_key(&card.working_dir)).or_default() += 1;
         }

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use astrcode_core::{
     event::{DurableEventPayload, Phase},
@@ -11,6 +11,7 @@ use astrcode_session::{
     payload::{TURN_FINISH_INTERRUPTED, agent_run_completed_payload, turn_completed_payload},
 };
 use astrcode_session_projection::{AgentSessionStatus, SessionReadModel};
+use rustc_hash::FxHashSet as HashSet;
 
 #[cfg(any(test, feature = "testing"))]
 use super::CompletedRecycleOutcome;
@@ -51,7 +52,7 @@ impl FrozenSessionTree {
                 closure: root_closure,
             }],
             running_children: Vec::new(),
-            visited: HashSet::from([root_session_id]),
+            visited: HashSet::from_iter([root_session_id]),
         }
     }
 
@@ -448,7 +449,7 @@ impl TurnScheduler {
         let child_shutdown = self.child_sessions.begin_tree_shutdown(&session_ids);
 
         let mut cleanup_error = None;
-        let mut settled_sessions = HashSet::new();
+        let mut settled_sessions = HashSet::default();
         for node in tree.nodes.iter().rev().filter(|node| node.exists) {
             let session_id = &node.session_id;
             match self.cleanup_execution_locked(session_id).await {

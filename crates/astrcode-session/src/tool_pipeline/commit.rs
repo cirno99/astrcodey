@@ -1,11 +1,9 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use astrcode_extension_sdk::extension::{
     PostToolUseResult, internal::runtime_post_tool_use_context,
 };
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 use super::{
     ToolCalls,

@@ -1,6 +1,6 @@
 //! Documentation hosts that may return raw markdown without secondary-model processing.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 const PREAPPROVED_HOSTS: &[&str] = &[
     "developer.mozilla.org",
@@ -23,13 +23,13 @@ const PREAPPROVED_HOSTS: &[&str] = &[
 ];
 
 struct PreapprovedIndex {
-    hostname_only: std::collections::HashSet<&'static str>,
+    hostname_only: rustc_hash::FxHashSet<&'static str>,
     path_prefixes: HashMap<&'static str, Vec<String>>,
 }
 
 fn build_index() -> PreapprovedIndex {
-    let mut hostname_only = std::collections::HashSet::new();
-    let mut path_prefixes: HashMap<&'static str, Vec<String>> = HashMap::new();
+    let mut hostname_only = rustc_hash::FxHashSet::default();
+    let mut path_prefixes: HashMap<&'static str, Vec<String>> = HashMap::default();
     for entry in PREAPPROVED_HOSTS {
         if let Some((host, path)) = entry.split_once('/') {
             path_prefixes

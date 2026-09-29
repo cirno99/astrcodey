@@ -485,7 +485,7 @@ fn normalize_tool_call_entries<E: ProviderVisibleEntry>(messages: &mut Vec<E>) {
 }
 
 fn truncate_incomplete_tool_entries<E: ProviderVisibleEntry>(messages: &mut Vec<E>) {
-    use std::collections::HashSet;
+    use rustc_hash::FxHashSet as HashSet;
 
     let mut out: Vec<E> = Vec::with_capacity(messages.len());
     // 未结算工具轮次:assistant 消息在 out 中的位置、全部 call_id、已收结果 id。
@@ -547,7 +547,7 @@ fn truncate_incomplete_tool_entries<E: ProviderVisibleEntry>(messages: &mut Vec<
                 })
                 .collect();
             if !call_ids.is_empty() {
-                pending = Some((out.len(), call_ids, HashSet::new()));
+                pending = Some((out.len(), call_ids, HashSet::default()));
             }
         }
         out.push(entry);
@@ -942,7 +942,7 @@ impl LlmClientConfig {
             retry_base_delay_ms: settings.retry_base_delay_ms,
             supports_strict_tool_use: settings.supports_strict_tool_use,
             extras,
-            extra_headers: std::collections::HashMap::new(),
+            extra_headers: std::collections::HashMap::default(),
             thinking: settings.thinking.clone(),
             thinking_capability: settings.thinking_capability.clone(),
             thinking_configured: settings.thinking_configured,
@@ -991,7 +991,7 @@ impl Default for LlmClientConfig {
             retry_base_delay_ms: crate::config::defaults::DEFAULT_LLM_RETRY_BASE_DELAY_MS,
             supports_strict_tool_use: false,
             extras: ProviderExtras::None,
-            extra_headers: std::collections::HashMap::new(),
+            extra_headers: std::collections::HashMap::default(),
             thinking: ThinkingConfig::default(),
             thinking_capability: None,
             thinking_configured: false,

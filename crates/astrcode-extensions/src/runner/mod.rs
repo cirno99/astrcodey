@@ -366,7 +366,7 @@ impl PreparedExtensionGeneration {
                 } => Some((id.clone(), key.clone(), fingerprint.clone())),
                 PreparedSourceEntry::Start(_) => None,
             })
-            .collect::<std::collections::HashSet<_>>();
+            .collect::<rustc_hash::FxHashSet<_>>();
         let mut retiring_operation_guards = Vec::with_capacity(self.retiring_gates.len());
         for gate in &self.retiring_gates {
             retiring_operation_guards.push(Arc::clone(gate).lock_owned().await);
@@ -393,7 +393,7 @@ impl PreparedExtensionGeneration {
                 PreparedSourceEntry::Retain { id, .. } => id.clone(),
                 PreparedSourceEntry::Start(prepared) => prepared.hosted.manifest.id().to_owned(),
             })
-            .collect::<std::collections::HashSet<_>>();
+            .collect::<rustc_hash::FxHashSet<_>>();
 
         for entry in entries {
             match entry {
@@ -1090,7 +1090,7 @@ impl ExtensionRunner {
                     current.fingerprint.clone(),
                 )
             })
-            .collect::<std::collections::HashSet<_>>();
+            .collect::<rustc_hash::FxHashSet<_>>();
         for entry in &entries {
             if let SourceGenerationEntry::Retain {
                 id,
@@ -1107,7 +1107,7 @@ impl ExtensionRunner {
         let desired_source_set = desired_sources
             .iter()
             .cloned()
-            .collect::<std::collections::HashSet<_>>();
+            .collect::<rustc_hash::FxHashSet<_>>();
         let changed = entries
             .iter()
             .any(|entry| matches!(entry, SourceGenerationEntry::Start { .. }))
@@ -1255,7 +1255,7 @@ impl ExtensionRunner {
             .iter()
             .enumerate()
             .map(|(position, id)| (id.as_str(), position))
-            .collect::<std::collections::HashMap<_, _>>();
+            .collect::<rustc_hash::FxHashMap<_, _>>();
         resolved.sort_by_key(|entry| activation_order.get(entry.id()).copied());
 
         let retained = resolved
@@ -1268,7 +1268,7 @@ impl ExtensionRunner {
                 } => Some((id.clone(), key.clone(), fingerprint.clone())),
                 ResolvedSourceEntry::Start(_) => None,
             })
-            .collect::<std::collections::HashSet<_>>();
+            .collect::<rustc_hash::FxHashSet<_>>();
         let retiring_gates = self
             .registry
             .extensions

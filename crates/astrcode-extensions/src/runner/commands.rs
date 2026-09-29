@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt,
     path::PathBuf,
     sync::{Arc, Weak},
@@ -13,6 +12,7 @@ use astrcode_extension_sdk::extension::{
     },
     *,
 };
+use rustc_hash::FxHashMap as HashMap;
 use tokio_util::sync::CancellationToken;
 
 use super::{

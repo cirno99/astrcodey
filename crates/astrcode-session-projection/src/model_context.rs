@@ -1,6 +1,6 @@
 //! Provider 可见上下文、system prompt、usage 与 compact rewrite 投影。
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     compaction::CompactStrategy,
@@ -14,6 +14,7 @@ use astrcode_core::{
     },
     types::ToolCallId,
 };
+use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::ProjectionError;
@@ -380,7 +381,7 @@ impl SessionModelContext {
         &self,
         call_ids: &HashSet<ToolCallId>,
     ) -> Vec<UnansweredToolCall> {
-        let mut seen = HashSet::new();
+        let mut seen = HashSet::default();
         let mut calls = Vec::new();
         for message in &self.messages {
             if message.message.role != LlmRole::Assistant {
@@ -413,7 +414,7 @@ impl SessionModelContext {
             return Vec::new();
         };
         let assistant = &self.messages[last_assistant_index].message;
-        let mut answered = HashSet::new();
+        let mut answered = HashSet::default();
         for message in self.messages.iter().skip(last_assistant_index + 1) {
             if message.message.role != LlmRole::Tool {
                 return Vec::new();
@@ -424,7 +425,7 @@ impl SessionModelContext {
                 }
             }
         }
-        let mut seen = HashSet::new();
+        let mut seen = HashSet::default();
         assistant
             .content
             .iter()

@@ -6,11 +6,12 @@
 //! 注意：`has_active()` 是进程控制层的优化索引，权威状态来自事件日志的 `phase` 字段。
 //! 进程重启后 registry 为空，需通过 `TurnScheduler::repair_stale()` 从事件重建一致性。
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::types::{SessionId, TurnId};
 use astrcode_session::{Session, TurnFinalization, TurnShutdownHandle};
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 
 struct TurnEntry {
     turn_id: TurnId,
@@ -40,7 +41,7 @@ pub struct TurnRegistry {
 impl TurnRegistry {
     pub fn new() -> Self {
         Self {
-            entries: Mutex::new(HashMap::new()),
+            entries: Mutex::new(HashMap::default()),
         }
     }
 

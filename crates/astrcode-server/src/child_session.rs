@@ -3,7 +3,6 @@
 mod completion;
 
 use std::{
-    collections::{HashMap, HashSet},
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -22,6 +21,7 @@ use astrcode_session_projection::{
     session_lineage::{ParentChainWalkError, collect_parent_chain},
 };
 use parking_lot::Mutex;
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -275,7 +275,7 @@ impl ChildSessionCoordinator {
         let (completed_tx, completed_rx) = mpsc::unbounded_channel();
         Self {
             session_manager,
-            by_parent: Arc::new(Mutex::new(HashMap::new())),
+            by_parent: Arc::new(Mutex::new(HashMap::default())),
             completion_claims: Arc::new(CompletionClaims::default()),
             completed_tx,
             completed_rx: Mutex::new(Some(completed_rx)),
@@ -1377,7 +1377,7 @@ impl ChildSessionCoordinator {
         let mut first_error = None;
         let mut any_shutdown_requested_by_cascade = false;
         let mut stack: Vec<SessionId> = vec![root_sid.clone()];
-        let mut visited = HashSet::from([root_sid.clone()]);
+        let mut visited = HashSet::from_iter([root_sid.clone()]);
 
         while let Some(sid) = stack.pop() {
             for candidate in self.guard_candidates(&sid) {

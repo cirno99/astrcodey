@@ -5,7 +5,7 @@
 //! pool and initializes servers for the startup workspace with the extension.
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -27,6 +27,7 @@ use astrcode_extension_sdk::{
         ToolPromptMetadata, ToolPromptTag, ToolResult, tool_metadata,
     },
 };
+use rustc_hash::FxHashMap as HashMap;
 use serde_json::{Value, json};
 use tokio::sync::{Mutex as AsyncMutex, Notify};
 
@@ -189,9 +190,9 @@ struct McpCacheEntry {
 impl McpShared {
     fn new(pool: McpProcessPool) -> Self {
         Self {
-            cache: Mutex::new(HashMap::new()),
-            refresh_locks: AsyncMutex::new(HashMap::new()),
-            warm_gates: AsyncMutex::new(HashMap::new()),
+            cache: Mutex::new(HashMap::default()),
+            refresh_locks: AsyncMutex::new(HashMap::default()),
+            warm_gates: AsyncMutex::new(HashMap::default()),
             pool,
         }
     }
@@ -524,7 +525,7 @@ impl DiscoveredMcpTools {
     fn build_cache_entry(self) -> McpCacheEntry {
         let server_map: HashMap<&str, &McpServerConfig> =
             self.servers.iter().map(|s| (s.name.as_str(), s)).collect();
-        let mut tool_lookup = HashMap::new();
+        let mut tool_lookup = HashMap::default();
         for candidate in &self.tools {
             if let Some(server) = server_map.get(candidate.server.as_str()) {
                 tool_lookup.insert(
@@ -717,7 +718,7 @@ mod tests {
             McpCacheEntry {
                 config_fingerprint: 1,
                 servers: Vec::new(),
-                tool_lookup: HashMap::new(),
+                tool_lookup: HashMap::default(),
                 candidates: Vec::new(),
                 diagnostics: Vec::new(),
             },

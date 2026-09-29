@@ -346,7 +346,7 @@ async fn execute_tool_call_blocking(
 /// 生命周期与 session 一致（由 `TurnRunner` 创建，随 `TurnRunner` 销毁）。
 #[derive(Default)]
 pub(crate) struct InMemoryFileObservationStore {
-    observations: Mutex<std::collections::HashMap<String, FileObservation>>,
+    observations: Mutex<rustc_hash::FxHashMap<String, FileObservation>>,
 }
 
 impl FileObservationStore for InMemoryFileObservationStore {

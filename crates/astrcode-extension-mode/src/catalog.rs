@@ -1,7 +1,8 @@
 //! Mode types, catalog, and built-in mode definitions.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
+use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 
 /// Mode identifier.
@@ -97,7 +98,7 @@ fn builtin_mode_specs() -> Vec<ModeSpec> {
         ModeSpec {
             id: ModeId::code(),
             name: "Code".into(),
-            restricted_tools: HashSet::new(),
+            restricted_tools: HashSet::default(),
             allowed_transitions: transitions.clone(),
             requires_plan_artifact: false,
         },

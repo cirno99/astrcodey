@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     sync::{
         Arc,
         atomic::{AtomicU32, Ordering},
@@ -10,6 +9,7 @@ use std::{
 use astrcode_extension_sdk::wire::{WireErrorCode, protocol::ErrorPayload};
 use astrcode_s5r_runtime::InvocationCancellation;
 use parking_lot::RwLock;
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::{
     extension_manifest::ExtensionRegistration,
@@ -209,7 +209,7 @@ mod tests {
                 custom_event_subscriptions: vec![],
             },
             reentrancy: Arc::new(AtomicU32::new(0)),
-            invoke_contexts: RwLock::new(HashMap::new()),
+            invoke_contexts: RwLock::new(HashMap::default()),
             detached_invoke_context: RwLock::new(Some(InvokeContext::default())),
         }
     }

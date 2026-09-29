@@ -5,7 +5,7 @@
 
 mod agent;
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_extension_sdk::{
     builder::{ExtensionToolDefinition, manifest},
@@ -26,6 +26,7 @@ use astrcode_extension_sdk::{
         HostSubmitTurnRequest,
     },
 };
+use rustc_hash::FxHashMap as HashMap;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -305,7 +306,7 @@ impl PreCompactHandler for AgentPreCompactHandler {
 }
 
 fn agent_status(messages: &[LlmMessage]) -> Option<String> {
-    let mut descriptions = HashMap::new();
+    let mut descriptions = HashMap::default();
     let mut entries = Vec::new();
 
     for message in messages {

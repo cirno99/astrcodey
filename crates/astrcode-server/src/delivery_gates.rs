@@ -1,13 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
 };
 
 use astrcode_core::types::SessionId;
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::{Mutex as AsyncMutex, Notify, OwnedMutexGuard};
 
 use crate::turn_scheduler::TurnScheduleError;

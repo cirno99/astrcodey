@@ -16,7 +16,6 @@ mod workspace;
 mod workspace_patch;
 
 use std::{
-    collections::HashMap,
     future::Future,
     path::PathBuf,
     sync::{
@@ -51,6 +50,7 @@ use astrcode_extension_sdk::{
 };
 use astrcode_storage::{EventReader, SessionReader};
 pub(crate) use capability::supported_operation_catalog;
+use rustc_hash::FxHashMap as HashMap;
 use serde_json::Value;
 use tokio::time::{Instant, timeout_at};
 use tokio_util::sync::CancellationToken;

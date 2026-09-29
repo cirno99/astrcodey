@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeSet, HashMap, HashSet, VecDeque},
+    collections::{BTreeSet, VecDeque},
     pin::Pin,
     sync::{
         Arc, Mutex,
@@ -17,6 +17,7 @@ use astrcode_extension_sdk::wire::{
     },
 };
 use futures_util::Stream;
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::Value;
 use tokio::{
     sync::{OwnedSemaphorePermit, Semaphore, TryAcquireError, mpsc, oneshot},
@@ -551,9 +552,9 @@ where
         };
         let mut writer = JoinSet::new();
         writer.spawn(run_write_pump(Arc::clone(&self.transport), write_rx));
-        let mut pending = HashMap::<String, PendingRequest>::new();
+        let mut pending = HashMap::<String, PendingRequest>::default();
         let mut cancelled = CancelledRequests::default();
-        let mut inbound = HashMap::<String, InvocationCancellation>::new();
+        let mut inbound = HashMap::<String, InvocationCancellation>::default();
         let mut tasks = JoinSet::<Result<TaskCompletion, PeerError>>::new();
         // A frame read may already have consumed bytes when another select branch wins.
         // Replace it only after the complete frame has been handed to the driver.
@@ -1857,7 +1858,7 @@ mod tests {
                 .acquire_owned()
                 .await
                 .expect("outbound permit");
-            let mut pending = HashMap::from([(
+            let mut pending = HashMap::from_iter([(
                 id.to_owned(),
                 PendingRequest::Stream(PendingStream {
                     events,

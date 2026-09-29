@@ -1,13 +1,12 @@
 //! Session read model 的根组合、身份、统计与跨子投影查询。
 
-use std::collections::HashSet;
-
 use astrcode_core::{
     event::{ParentSessionRef, Phase, SessionStarted},
     tool::SessionToolSelection,
     types::{Cursor, SessionId},
 };
 use chrono::{DateTime, Utc};
+use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{

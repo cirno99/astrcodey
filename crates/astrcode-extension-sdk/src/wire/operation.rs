@@ -685,7 +685,7 @@ pub struct HostOperationSpec {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use rustc_hash::FxHashSet as HashSet;
 
     use super::*;
 
@@ -693,8 +693,8 @@ mod tests {
     fn operation_catalog_is_exhaustive_and_round_trips() {
         assert_eq!(HOST_OPERATION_SPECS.len(), HostOperation::COUNT);
 
-        let mut names = HashSet::new();
-        let mut operations = HashSet::new();
+        let mut names = HashSet::default();
+        let mut operations = HashSet::default();
         for (index, spec) in HOST_OPERATION_SPECS.iter().enumerate() {
             assert_eq!(spec.operation as usize, index);
             assert!(names.insert(spec.name), "duplicate name: {}", spec.name);

@@ -1,7 +1,6 @@
 //! 工具调用去重：同 step 复用结果，跨 step 检测死循环并注入提醒。
 
-use std::collections::HashMap;
-
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::watch;
 
 use crate::tool_types::ToolExecutionOutcome;
@@ -40,8 +39,8 @@ impl Default for ToolCallDeduplicator {
 impl ToolCallDeduplicator {
     pub(crate) fn new() -> Self {
         Self {
-            same_step_in_flight: HashMap::new(),
-            call_key_by_call_id: HashMap::new(),
+            same_step_in_flight: HashMap::default(),
+            call_key_by_call_id: HashMap::default(),
             step_call_keys: Vec::new(),
             consecutive_key: None,
             consecutive_count: 0,

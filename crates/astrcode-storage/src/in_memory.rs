@@ -3,12 +3,9 @@
 //! 通过 crate feature `testing` 暴露给跨 crate 集成测试；本 crate 内单元测试也可启用该 feature。
 //! 不要用 `#[cfg(test)]` 单独 gating：否则 `astrcode-server` 等集成测试无法链接此模块。
 
-use std::{
-    collections::HashMap,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-    },
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use astrcode_core::{
@@ -20,6 +17,7 @@ use astrcode_session_projection::{
     AgentSessionLinkView, PreparedProjectionBatch, SessionReadModel, SessionReadModelProjection,
     SessionSummary,
 };
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::Mutex;
 
 use crate::{
@@ -278,8 +276,8 @@ impl SessionEventJournal for InMemoryEventStore {
             InMemorySession {
                 events: vec![stored.clone()],
                 projection,
-                tool_results: HashMap::new(),
-                event_consumers: HashMap::new(),
+                tool_results: HashMap::default(),
+                event_consumers: HashMap::default(),
             },
         );
         Ok(stored)

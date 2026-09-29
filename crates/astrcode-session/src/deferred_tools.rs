@@ -1,11 +1,12 @@
 //! Deferred tool visibility for provider requests.
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_core::{
     llm::LlmMessage,
     tool::{ToolDefinition, ToolPromptMetadata},
 };
+use rustc_hash::FxHashSet as HashSet;
 
 #[derive(Clone)]
 pub(crate) struct ToolSnapshot {
@@ -167,9 +168,8 @@ fn is_deferred_gate(tool: &ToolSnapshot) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-
     use astrcode_core::tool::{ToolDefinition, ToolOrigin, ToolPromptMetadata};
+    use rustc_hash::FxHashSet as HashSet;
 
     use super::*;
 
@@ -209,7 +209,7 @@ mod tests {
         let cases = [
             (
                 vec![plain_snapshot("read"), plain_snapshot("write")],
-                HashSet::new(),
+                HashSet::default(),
                 vec!["read", "write"],
             ),
             (
@@ -217,7 +217,7 @@ mod tests {
                     plain_snapshot("read"),
                     deferred_snapshot("mcp_tool", "group-a"),
                 ],
-                HashSet::new(),
+                HashSet::default(),
                 vec!["read"],
             ),
             (
@@ -225,7 +225,7 @@ mod tests {
                     plain_snapshot("read"),
                     deferred_snapshot("mcp_tool", "group-a"),
                 ],
-                HashSet::from(["mcp_tool".to_string()]),
+                HashSet::from_iter(["mcp_tool".to_string()]),
                 vec!["read", "mcp_tool"],
             ),
             (
@@ -233,7 +233,7 @@ mod tests {
                     deferred_snapshot("mcp_tool", "group-a"),
                     gate_snapshot("discover", "group-a"),
                 ],
-                HashSet::new(),
+                HashSet::default(),
                 vec!["discover"],
             ),
         ];
@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn activate_only_inserts_available_tools() {
         let tools = vec![deferred_snapshot("a", "g"), deferred_snapshot("b", "g")];
-        let mut active = HashSet::new();
+        let mut active = HashSet::default();
         let changed = activate_deferred_tools(&mut active, &tools, vec!["a".into(), "c".into()]);
         assert!(changed);
         assert!(active.contains("a"));
@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn activate_returns_false_when_no_new_tools() {
         let tools = vec![deferred_snapshot("a", "g")];
-        let mut active = HashSet::new();
+        let mut active = HashSet::default();
         active.insert("a".into());
         let changed = activate_deferred_tools(&mut active, &tools, vec!["a".into()]);
         assert!(!changed);
