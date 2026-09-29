@@ -451,6 +451,8 @@ export async function createKanbanCard(input: {
   title: string
   body: string
   workingDir: string
+  /** 归属日 `YYYY-MM-DD`；缺省时由扩展取创建当天。 */
+  date?: string
   column?: KanbanBoardResponse['cards'][number]['column']
 }): Promise<void> {
   await request<unknown>(kanbanPath('/cards'), {
@@ -465,6 +467,7 @@ export async function updateKanbanCard(
     title?: string
     body?: string
     workingDir?: string
+    date?: string
     column?: KanbanBoardResponse['cards'][number]['column']
   }
 ): Promise<void> {

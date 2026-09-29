@@ -57,6 +57,12 @@ pub struct Card {
     pub error_retries: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
+    /// 卡片在日历上的归属日（`YYYY-MM-DD`）。
+    ///
+    /// 创建时取创建当天，用户可以拖拽改写；空串表示旧数据的 `created_at` 无法解析，
+    /// 归属日未知——不静默塞一个今天进去。
+    #[serde(default)]
+    pub date: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -74,6 +80,7 @@ impl Card {
             attempt: 0,
             error_retries: 0,
             note: None,
+            date: day_from_rfc3339(&now).unwrap_or_default(),
             created_at: now.clone(),
             updated_at: now,
         }
@@ -120,6 +127,8 @@ pub enum BoardStoreError {
     CardNotOwned { card_id: String },
     #[error("卡片 {card_id} 处于运行中列，无法直接修改")]
     CardRunning { card_id: String },
+    #[error("归属日 {0} 不是合法的 YYYY-MM-DD 日期")]
+    InvalidDay(String),
 }
 
 /// 看板文件访问器。
@@ -160,7 +169,11 @@ impl BoardStore {
 
     fn load_locked(&self) -> Result<Board, BoardStoreError> {
         match fs::read(&self.path) {
-            Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+            Ok(bytes) => {
+                let mut board: Board = serde_json::from_slice(&bytes)?;
+                backfill_dates(&mut board);
+                Ok(board)
+            },
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Board::default()),
             Err(error) => Err(BoardStoreError::Io(error)),
         }
@@ -184,12 +197,53 @@ impl BoardStore {
     }
 }
 
+/// 补齐早于 `date` 字段写下的看板文件。
+///
+/// 只在内存里补，下一次写盘自然落盘。`created_at` 也解析不了的卡片保持空串：
+/// 那是无法确定归属日的旧数据，编一个今天出来只会把损坏伪装成正常。
+fn backfill_dates(board: &mut Board) {
+    for card in &mut board.cards {
+        if card.date.is_empty() {
+            card.date = day_from_rfc3339(&card.created_at).unwrap_or_default();
+        }
+    }
+}
+
 pub fn now_rfc3339() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
+/// RFC3339 时间戳转日历日 `YYYY-MM-DD`。
+///
+/// 取本地日历日：日历是给人看的，前端 `dayKeyFromIso` 也按本地时区换算，
+/// 两边用同一个时区，凌晨创建的卡片才不会落到前一天。
+/// 时间戳无法解析时返回 `None`，由调用方决定是留空还是报错。
+pub fn day_from_rfc3339(timestamp: &str) -> Option<String> {
+    chrono::DateTime::parse_from_rfc3339(timestamp)
+        .ok()
+        .map(|value| {
+            value
+                .with_timezone(&chrono::Local)
+                .date_naive()
+                .format("%Y-%m-%d")
+                .to_string()
+        })
+}
+
+/// 校验用户传入的归属日。
+///
+/// 归属日跨 HTTP 边界进入持久化文件，必须在边界上确认它是真实的日历日，
+/// 否则日历会拿到一个无法分桶的字符串。
+pub fn parse_day(value: &str) -> Result<String, BoardStoreError> {
+    chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
+        .map(|day| day.format("%Y-%m-%d").to_string())
+        .map_err(|_| BoardStoreError::InvalidDay(value.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
+    use chrono::TimeZone as _;
+
     use super::*;
 
     fn store() -> (tempfile::TempDir, BoardStore) {
@@ -242,6 +296,12 @@ mod tests {
     #[test]
     fn board_without_error_retries_still_loads() {
         let (dir, store) = store();
+        // 归属日按本地日历回填，写死 UTC 字符串会在西半球时区变成前一天。
+        let created_at = chrono::Local
+            .with_ymd_and_hms(2026, 1, 1, 0, 30, 0)
+            .single()
+            .expect("本地凌晨必须存在")
+            .to_rfc3339();
         let legacy = serde_json::json!({
             "cards": [{
                 "id": "legacy-card",
@@ -250,8 +310,8 @@ mod tests {
                 "column": "ready",
                 "workingDir": "/tmp/project",
                 "attempt": 1,
-                "createdAt": "2026-01-01T00:00:00+00:00",
-                "updatedAt": "2026-01-01T00:00:00+00:00"
+                "createdAt": created_at.clone(),
+                "updatedAt": created_at.clone(),
             }]
         });
         fs::write(
@@ -266,6 +326,10 @@ mod tests {
             .expect("旧看板必须仍可读");
         assert_eq!(card.error_retries, 0);
         assert_eq!(card.attempt, 1);
+        assert_eq!(
+            card.date, "2026-01-01",
+            "缺 date 的旧卡片按 created_at 回填"
+        );
     }
 
     #[test]
@@ -284,5 +348,68 @@ mod tests {
             board.cards.push(card);
         }
         assert_eq!(board.running_count(), 2);
+    }
+    /// 归属日无法从 `created_at` 推导时保持空串，不能悄悄认领今天。
+    #[test]
+    fn backfill_leaves_unknown_dates_empty_instead_of_guessing_today() {
+        let (dir, store) = store();
+        let legacy = serde_json::json!({
+            "cards": [{
+                "id": "broken-card",
+                "title": "时间戳损坏",
+                "body": "",
+                "column": "backlog",
+                "workingDir": "/tmp/project",
+                "attempt": 0,
+                "createdAt": "not-a-timestamp",
+                "updatedAt": "not-a-timestamp"
+            }]
+        });
+        fs::write(
+            dir.path().join(BOARD_FILE),
+            serde_json::to_vec_pretty(&legacy).unwrap(),
+        )
+        .unwrap();
+
+        let card = store
+            .read(|board| board.card("broken-card").cloned())
+            .unwrap()
+            .expect("卡片仍必须可读");
+        assert!(card.date.is_empty(), "无法确定归属日时不能编一个日期出来");
+    }
+
+    #[test]
+    fn parse_day_accepts_real_days_and_rejects_everything_else() {
+        assert_eq!(parse_day("2026-02-28").unwrap(), "2026-02-28");
+        assert_eq!(
+            parse_day("2026-2-3").unwrap(),
+            "2026-02-03",
+            "非补零输入要归一化"
+        );
+        assert!(parse_day("2026-02-30").is_err(), "不存在的日历日必须被拒");
+        assert!(parse_day("").is_err());
+        assert!(parse_day("2026-01-01T00:00:00Z").is_err());
+    }
+
+    #[test]
+    fn new_card_starts_on_its_creation_day() {
+        let card = sample_card();
+        assert_eq!(card.date, day_from_rfc3339(&card.created_at).unwrap());
+    }
+
+    /// 归属日取本地日历日，而不是直接截 UTC 日期。
+    ///
+    /// 本地凌晨在东半球时区已经跨到 UTC 的前一天，截 UTC 会把卡片排到昨天；
+    /// 前端 `dayKeyFromIso` 也按本地时区换算，两边必须给出同一天。
+    #[test]
+    fn day_from_rfc3339_uses_the_local_calendar() {
+        let local_after_midnight = chrono::Local
+            .with_ymd_and_hms(2026, 6, 15, 0, 30, 0)
+            .single()
+            .expect("本地凌晨必须存在");
+        assert_eq!(
+            day_from_rfc3339(&local_after_midnight.to_rfc3339()),
+            Some("2026-06-15".to_string())
+        );
     }
 }

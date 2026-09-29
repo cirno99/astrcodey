@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { DragEvent } from 'react'
 import { useAppStore } from '../../store/conversation'
 import { cn } from '../../lib/utils'
-import { Button, Dropdown, Icon, IconButton } from '../ui'
+import { Button, Icon, IconButton } from '../ui'
 import { PageHeader } from '../layout'
 import * as api from '../../services/api'
 import {
@@ -9,145 +10,106 @@ import {
   type KanbanCard,
   type KanbanCardColumn,
 } from '../../services/types'
+import { CalendarBucketColumn } from './CalendarBucketColumn'
+import { CreateCardModal } from './CreateCardModal'
+import { EditCardModal } from './EditCardModal'
+import { KanbanCardList } from './KanbanCardList'
+import type { KanbanCardHandlers } from './KanbanCardItem'
 import {
-  forgetProjectPath,
-  mergeProjectPathCandidates,
-  readProjectPathHistory,
-  rememberProjectPath,
-} from './projectPathHistory'
+  CALENDAR_SCALES,
+  CALENDAR_SCALE_LABELS,
+  UNSCHEDULED_BUCKET_KEY,
+  anchorLabel,
+  bucketKeyOf,
+  bucketsFor,
+  cardDayKey,
+  shiftAnchorDayKey,
+  todayKey,
+  type CalendarBucket,
+  type CalendarScale,
+} from './calendar'
+import {
+  COLUMN_HINTS,
+  COLUMN_LABELS,
+  PUBLIC_AREA_COLUMNS,
+  PUBLIC_AREA_DROP_COLUMNS,
+  isRunningColumn,
+  sameDropTarget,
+  type CalendarSlot,
+  type CardMove,
+  type DropTarget,
+} from './columns'
 
 interface KanbanPageProps {
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  /** 跳转到对话视图；点击卡片打开对应会话时需要。 */
+  onOpenChat: () => void
 }
-
-const COLUMN_LABELS: Record<KanbanCardColumn, string> = {
-  backlog: '待办',
-  ready: '待领取',
-  analyzing: '分析中',
-  implementing: '实施中',
-  done: '已完成',
-  blocked: '已阻塞',
-}
-
-const COLUMN_HINTS: Record<KanbanCardColumn, string> = {
-  backlog: '只记录，不自动执行',
-  ready: '等待扩展领取',
-  analyzing: '扩展正在分析需求',
-  implementing: '扩展正在实施',
-  done: '终态',
-  blocked: '需要人工介入',
-}
-
-/**
- * 用户可写入的列。
- *
- * `analyzing` / `implementing` 由扩展独占，用户直接写入会和自动化打架。
- */
-const USER_WRITABLE_COLUMNS: KanbanCardColumn[] = [
-  'backlog',
-  'ready',
-  'done',
-  'blocked',
-]
 
 /** 后台自动化会推进卡片，因此看板页需要周期性拉取而不是只加载一次。 */
 const BOARD_POLL_INTERVAL_MS = 5000
 
-function isRunning(column: KanbanCardColumn): boolean {
-  return column === 'analyzing' || column === 'implementing'
-}
-
 /**
- * 卡片日期：RFC3339 时间戳转浏览器本地时区的 `YYYY-MM-DD`。
+ * 归属日未知的卡片（旧数据回填失败）也要有落点。
  *
- * 后端时间戳是 UTC，直接截字符串会让东八区凌晨创建的卡片显示成前一天，因此必须按本地时区换算。
- * 解析失败返回空串，调用方据此不渲染，避免把损坏的时间戳显示成 `NaN-NaN-NaN`。
+ * 它们既不在日历的时间轴上，也不属于公共区的任何一格，不额外收纳就会从看板上消失。
  */
-function formatCardDate(isoTimestamp: string): string {
-  const date = new Date(isoTimestamp)
-  if (Number.isNaN(date.getTime())) return ''
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+const UNSCHEDULED_BUCKET: CalendarBucket = {
+  key: UNSCHEDULED_BUCKET_KEY,
+  label: '未排期',
+  shortLabel: '未排期',
+  startDay: '',
+  endDay: '',
 }
 
-/**
- * 可折叠的长文本，卡片正文与执行说明共用。
- *
- * 折叠态固定高度，只有实际溢出的文本才提供展开入口——短文本不该挂一个点了没反应的按钮。
- * 用测量而不是字符数阈值：中英文混排下字符数反映不出真实高度。
- * 展开态不测量——此时 `scrollHeight` 等于 `clientHeight`，会把「有溢出」误判成「无溢出」。
- * 排版交给调用方，本组件只管折叠行为。
- */
-function CollapsibleText({
-  text,
-  className,
-}: {
-  text: string
-  className?: string
-}) {
-  const textRef = useRef<HTMLParagraphElement>(null)
-  const [expanded, setExpanded] = useState(false)
-  const [overflowing, setOverflowing] = useState(false)
-
-  useEffect(() => {
-    if (expanded) return
-    const node = textRef.current
-    if (!node) return
-    setOverflowing(node.scrollHeight > node.clientHeight + 1)
-  }, [expanded, text])
-
-  return (
-    <>
-      <p
-        ref={textRef}
-        className={cn(
-          className,
-          expanded
-            ? 'max-h-[40vh] overflow-y-auto'
-            : 'max-h-[54px] overflow-hidden'
-        )}
-      >
-        {text}
-      </p>
-      {overflowing && (
-        <button
-          type="button"
-          className="mt-1 flex items-center gap-0.5 text-[11px] text-text-muted hover:text-text-secondary"
-          onClick={() => setExpanded((current) => !current)}
-        >
-          <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} />
-          {expanded ? '收起' : '展开'}
-        </button>
-      )}
-    </>
-  )
-}
+const emptySlots = (): Record<CalendarSlot, KanbanCard[]> => ({
+  backlog: [],
+  done: [],
+})
 
 export default function KanbanPage({
   isSidebarOpen,
   onToggleSidebar,
+  onOpenChat,
 }: KanbanPageProps) {
   const workingDir = useAppStore((s) => s.workingDir)
   const sessions = useAppStore((s) => s.sessions)
   const cards = useAppStore((s) => s.kanbanCards)
   const refreshKanbanBoard = useAppStore((s) => s.refreshKanbanBoard)
+  const deleteSession = useAppStore((s) => s.deleteSession)
+  const switchSession = useAppStore((s) => s.switchSession)
+  const showTransientHint = useAppStore((s) => s.showTransientHint)
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [composing, setComposing] = useState(false)
-  const [draftTitle, setDraftTitle] = useState('')
-  const [draftBody, setDraftBody] = useState('')
-  const [draftWorkingDir, setDraftWorkingDir] = useState('')
-  const [pathHistory, setPathHistory] = useState<string[]>(() =>
-    readProjectPathHistory()
-  )
-  const [pathMenuOpen, setPathMenuOpen] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  /** 正在编辑的卡片 id；轮询会换掉卡片对象，因此按 id 记录而不是存对象。 */
+  const [editingCardId, setEditingCardId] = useState<string | null>(null)
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
-  const [dropTarget, setDropTarget] = useState<KanbanCardColumn | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
   /** 默认全部收起，因此这里只记录被手动展开的卡片；按 id 记录，5 秒轮询换掉卡片对象也不会丢失。 */
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
     () => new Set()
   )
+  const [scale, setScale] = useState<CalendarScale>('day')
+  const [anchorDayKey, setAnchorDayKey] = useState(() => todayKey())
+  /**
+   * 「回到今天」的自增号。
+   *
+   * 横向滚动不改变锚点，因此「已经停在今天、只是滚到别处」时 setAnchorDayKey
+   * 传入同值会被 React 判为无变化，居中 effect 也就不会重跑。这个自增号保证
+   * 每次点击都产生一次新的居中请求。
+   */
+  const [recenterToken, setRecenterToken] = useState(0)
+  /** 每个日历列里被点开的手风琴项；`null` 表示还没点过、两项对半显示。 */
+  const [preferredSlotByBucket, setPreferredSlotByBucket] = useState<
+    Record<string, CalendarSlot | null>
+  >({})
+
+  const calendarScrollRef = useRef<HTMLDivElement>(null)
+  const centeredRef = useRef<string | null>(null)
+  const layoutReadyRef = useRef(false)
 
   useEffect(() => {
     void refreshKanbanBoard()
@@ -158,7 +120,37 @@ export default function KanbanPage({
     return () => window.clearInterval(timer)
   }, [refreshKanbanBoard])
 
-  const grouped = useMemo(() => {
+  const buckets = useMemo(
+    () => bucketsFor(scale, anchorDayKey),
+    [scale, anchorDayKey]
+  )
+
+  const today = todayKey()
+
+  /**
+   * 把今天所在的列滚到视口正中。
+   *
+   * 只在切换刻度、翻页、点「回到今天」、以及首屏卡片到位后各做一次：卡片决定列的收放宽度，
+   * 卡片还没到时所有列都是收起宽度，那时对齐的位置在卡片到位后就不准了。
+   * 之后不再跟随卡片变化，否则 5 秒轮询会把用户手动滚动的位置一直拽回来。
+   */
+  useEffect(() => {
+    const container = calendarScrollRef.current
+    if (!container) return
+    const key = `${scale}:${anchorDayKey}:${recenterToken}`
+    const awaitingFirstCards = !layoutReadyRef.current && cards.length > 0
+    if (centeredRef.current === key && !awaitingFirstCards) return
+    layoutReadyRef.current = cards.length > 0
+    const target = container.querySelector<HTMLElement>('[data-today="true"]')
+    if (!target) return
+    centeredRef.current = key
+    container.scrollLeft = Math.max(
+      0,
+      target.offsetLeft - (container.clientWidth - target.offsetWidth) / 2
+    )
+  }, [scale, anchorDayKey, recenterToken, cards, buckets])
+
+  const cardsByColumn = useMemo(() => {
     const groups = new Map<KanbanCardColumn, KanbanCard[]>()
     for (const column of KANBAN_CARD_COLUMNS) {
       groups.set(column, [])
@@ -169,55 +161,46 @@ export default function KanbanPage({
     return groups
   }, [cards])
 
-  const projectPathCandidates = useMemo(
-    () =>
-      mergeProjectPathCandidates(pathHistory, [
-        workingDir,
-        ...sessions.map((session) => session.workingDir),
-      ]),
-    [pathHistory, sessions, workingDir]
+  /**
+   * 日历列的分组。
+   *
+   * 只有 `backlog` / `done` 两列进日历，其余四列在公共区；
+   * 归属日无法确定的卡片归到 `UNSCHEDULED_BUCKET_KEY`，而不是被丢掉。
+   */
+  const calendarGroups = useMemo(() => {
+    const groups = new Map<string, Record<CalendarSlot, KanbanCard[]>>()
+    for (const bucket of buckets) {
+      groups.set(bucket.key, emptySlots())
+    }
+    for (const card of cards) {
+      if (card.column !== 'backlog' && card.column !== 'done') continue
+      const dayKey = cardDayKey(card)
+      const key = dayKey ? bucketKeyOf(scale, dayKey) : UNSCHEDULED_BUCKET_KEY
+      let slots = groups.get(key)
+      if (!slots) {
+        slots = emptySlots()
+        groups.set(key, slots)
+      }
+      slots[card.column].push(card)
+    }
+    return groups
+  }, [buckets, cards, scale])
+
+  const unscheduledSlots = calendarGroups.get(UNSCHEDULED_BUCKET_KEY)
+  const hasUnscheduled =
+    unscheduledSlots !== undefined &&
+    unscheduledSlots.backlog.length + unscheduledSlots.done.length > 0
+
+  const sessionWorkingDirs = useMemo(
+    () => sessions.map((session) => session.workingDir),
+    [sessions]
   )
 
-  const handleCreate = useCallback(async () => {
-    const title = draftTitle.trim()
-    const targetDir = draftWorkingDir.trim() || workingDir
-    if (!title) {
-      setErrorMessage('卡片标题不能为空')
-      return
-    }
-    if (!targetDir) {
-      setErrorMessage('需要指定工作目录')
-      return
-    }
-    setBusy(true)
-    try {
-      await api.createKanbanCard({
-        title,
-        body: draftBody,
-        workingDir: targetDir,
-        column: 'backlog',
-      })
-      setDraftTitle('')
-      setPathHistory(rememberProjectPath(targetDir))
-      setDraftBody('')
-      setComposing(false)
-      await refreshKanbanBoard()
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err))
-    } finally {
-      setBusy(false)
-    }
-  }, [draftBody, draftTitle, draftWorkingDir, refreshKanbanBoard, workingDir])
-
-  const handleForgetPath = useCallback((dir: string) => {
-    setPathHistory(forgetProjectPath(dir))
-  }, [])
-
-  const handleMove = useCallback(
-    async (cardId: string, column: KanbanCardColumn) => {
+  const moveCard = useCallback(
+    async (cardId: string, move: CardMove) => {
       setBusy(true)
       try {
-        await api.updateKanbanCard(cardId, { column })
+        await api.updateKanbanCard(cardId, move)
         await refreshKanbanBoard()
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : String(err))
@@ -228,10 +211,21 @@ export default function KanbanPage({
     [refreshKanbanBoard]
   )
 
+  /**
+   * 删除卡片。
+   *
+   * 「已完成」卡片绑定的会话是自动化为它建的，卡片删掉后不再有任何记录指向该会话，
+   * 因此一并删除。反方向不成立：删除会话不动卡片——看板数据在扩展的 board.json 里，
+   * 与会话存储互不依赖。
+   */
   const handleDelete = useCallback(
     async (cardId: string) => {
       setBusy(true)
       try {
+        const card = cards.find((item) => item.id === cardId)
+        if (card?.column === 'done' && card.sessionId) {
+          await deleteSession(card.sessionId)
+        }
         await api.deleteKanbanCard(cardId)
         await refreshKanbanBoard()
       } catch (err) {
@@ -240,25 +234,7 @@ export default function KanbanPage({
         setBusy(false)
       }
     },
-    [refreshKanbanBoard]
-  )
-
-  /** 拖拽落点：只接受用户可写列，且拖回原列时是空操作。 */
-  const handleDrop = useCallback(
-    (column: KanbanCardColumn, cardId: string | null) => {
-      setDropTarget(null)
-      if (!cardId) return
-      const card = cards.find((item) => item.id === cardId)
-      if (!card || card.column === column) return
-      void handleMove(cardId, column)
-    },
-    [cards, handleMove]
-  )
-
-  const allCardsCollapsed = useMemo(
-    () =>
-      cards.length > 0 && cards.every((card) => !expandedCardIds.has(card.id)),
-    [cards, expandedCardIds]
+    [cards, deleteSession, refreshKanbanBoard]
   )
 
   const toggleCardExpanded = useCallback((cardId: string) => {
@@ -273,15 +249,136 @@ export default function KanbanPage({
     })
   }, [])
 
+  const handleDragEnd = useCallback(() => {
+    setDraggingCardId(null)
+    setDropTarget(null)
+  }, [])
+
+  /** 拖拽落点：只接受用户可写列，且拖回原处时是空操作。 */
+  const handleDrop = useCallback(
+    (target: DropTarget) => {
+      setDropTarget(null)
+      const cardId = draggingCardId
+      if (!cardId) return
+      const card = cards.find((item) => item.id === cardId)
+      if (!card) return
+      if (target.kind === 'column') {
+        if (card.column === target.column) return
+        void moveCard(cardId, { column: target.column })
+        return
+      }
+      // 日历落点：列与归属日一起改。只有日刻度会成为落点，桶键本身就是归属日。
+      if (card.column === target.slot && card.date === target.bucketKey) return
+      void moveCard(cardId, { column: target.slot, date: target.bucketKey })
+    },
+    [cards, draggingCardId, moveCard]
+  )
+
+  /**
+   * 打开卡片绑定的对话。
+   *
+   * 没有 `sessionId` 说明这张卡片从未被自动化领取（例如从待办直接拖进已完成），
+   * 此时没有可跳转的对话，给一条提示而不是切进一个空会话。
+   * `sessionId` 存在但会话已被删除的情况，由 `switchSession` 自己的错误提示兜底。
+   */
+  const handleOpenConversation = useCallback(
+    (cardId: string) => {
+      const card = cards.find((item) => item.id === cardId)
+      if (!card?.sessionId) {
+        showTransientHint('这张卡片还没有对话')
+        return
+      }
+      onOpenChat()
+      void switchSession(card.sessionId)
+    },
+    [cards, onOpenChat, showTransientHint, switchSession]
+  )
+
+  const handlers: KanbanCardHandlers = useMemo(
+    () => ({
+      busy,
+      expandedCardIds,
+      draggingCardId,
+      toggleExpanded: toggleCardExpanded,
+      move: moveCard,
+      remove: handleDelete,
+      dragStart: setDraggingCardId,
+      dragEnd: handleDragEnd,
+      openConversation: handleOpenConversation,
+      edit: setEditingCardId,
+    }),
+    [
+      busy,
+      draggingCardId,
+      expandedCardIds,
+      handleDelete,
+      handleDragEnd,
+      handleOpenConversation,
+      moveCard,
+      toggleCardExpanded,
+    ]
+  )
+
+  const allCardsCollapsed = useMemo(
+    () =>
+      cards.length > 0 && cards.every((card) => !expandedCardIds.has(card.id)),
+    [cards, expandedCardIds]
+  )
+
   const toggleAllCardsCollapsed = useCallback(() => {
     setExpandedCardIds(
-      allCardsCollapsed
-        ? new Set(cards.map((card) => card.id))
-        : new Set<string>()
+      allCardsCollapsed ? new Set(cards.map((card) => card.id)) : new Set()
     )
   }, [allCardsCollapsed, cards])
 
-  const runningCount = cards.filter((card) => isRunning(card.column)).length
+  const setPreferredSlot = useCallback(
+    (bucketKey: string, slot: CalendarSlot | null) => {
+      setPreferredSlotByBucket((current) => ({ ...current, [bucketKey]: slot }))
+    },
+    []
+  )
+
+  /** 日历列的落点回调；只有日刻度的列会真的调用它们（见 `acceptsDrop`）。 */
+  const bucketDropHandlers = (bucketKey: string) => ({
+    onDragOverSlot: (slot: CalendarSlot) =>
+      setDropTarget({ kind: 'bucket', bucketKey, slot }),
+    onDragLeaveSlot: () => setDropTarget(null),
+    onDropSlot: (slot: CalendarSlot) =>
+      handleDrop({ kind: 'bucket', bucketKey, slot }),
+  })
+
+  const columnDragProps = (column: KanbanCardColumn) => {
+    if (!PUBLIC_AREA_DROP_COLUMNS.includes(column)) return {}
+    const target: DropTarget = { kind: 'column', column }
+    return {
+      onDragOver: (event: DragEvent<HTMLElement>) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+        setDropTarget((current) =>
+          sameDropTarget(current, target) ? current : target
+        )
+      },
+      onDragLeave: (event: DragEvent<HTMLElement>) => {
+        // dragleave 会从子元素冒泡上来，只有真正离开整格才清掉高亮。
+        const nextTarget = event.relatedTarget as Node | null
+        if (event.currentTarget.contains(nextTarget)) return
+        setDropTarget((current) =>
+          sameDropTarget(current, target) ? null : current
+        )
+      },
+      onDrop: (event: DragEvent<HTMLElement>) => {
+        event.preventDefault()
+        handleDrop(target)
+      },
+    }
+  }
+
+  const runningCount = cards.filter((card) =>
+    isRunningColumn(card.column)
+  ).length
+
+  // 弹窗打开期间卡片可能被自动化领取或删除，因此按 id 现取；取不到就不渲染。
+  const editingCard = cards.find((card) => card.id === editingCardId)
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel-bg">
@@ -321,276 +418,169 @@ export default function KanbanPage({
           >
             刷新
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setComposing((current) => !current)}
-          >
-            {composing ? '取消' : '新建卡片'}
+          <Button variant="secondary" onClick={() => setCreateModalOpen(true)}>
+            新建卡片
           </Button>
         </div>
       </PageHeader>
 
-      <main className="min-h-0 flex-1 overflow-hidden px-[var(--layout-page-padding-x)] py-6">
+      <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-[var(--layout-page-padding-x)] py-4">
         {errorMessage && (
-          <div className="mb-4 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-[13px] text-danger">
+          <div className="shrink-0 rounded-lg border border-danger/20 bg-danger-soft px-4 py-3 text-[13px] text-danger">
             {errorMessage}
           </div>
         )}
 
-        {composing && (
-          <div className="mb-4 rounded-lg border border-border bg-surface-soft p-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <input
-                className="rounded-md border border-border bg-panel-bg px-3 py-2 text-[13px] text-text-primary outline-none focus:border-border-strong"
-                placeholder="标题"
-                value={draftTitle}
-                onChange={(event) => setDraftTitle(event.target.value)}
-              />
-              <Dropdown
-                open={pathMenuOpen && projectPathCandidates.length > 0}
-                onClose={() => setPathMenuOpen(false)}
-                align="left"
-                label="项目路径候选"
-                className="max-h-[240px] w-full min-w-full max-w-none overflow-y-auto"
-                trigger={
-                  <input
-                    className="w-full rounded-md border border-border bg-panel-bg px-3 py-2 text-[13px] text-text-primary outline-none focus:border-border-strong"
-                    placeholder={
-                      workingDir ? `默认：${workingDir}` : '项目路径'
-                    }
-                    value={draftWorkingDir}
-                    onChange={(event) => {
-                      setDraftWorkingDir(event.target.value)
-                      setPathMenuOpen(true)
-                    }}
-                    onClick={() => setPathMenuOpen(true)}
-                    onFocus={() => setPathMenuOpen(true)}
-                  />
-                }
-              >
-                {projectPathCandidates.map((dir) => (
-                  <div
-                    key={dir}
-                    className="flex items-center gap-1 rounded-md pl-2 hover:bg-surface-muted"
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 truncate py-1 text-left text-[12px] text-text-secondary"
-                      title={dir}
-                      onClick={() => {
-                        setDraftWorkingDir(dir)
-                        setPathMenuOpen(false)
-                      }}
-                    >
-                      {dir}
-                    </button>
-                    {/* 只有历史记录能删：会话推导出的候选删掉也会随会话列表立刻回来。 */}
-                    {pathHistory.includes(dir) && (
-                      <IconButton
-                        icon="trash"
-                        size={14}
-                        className="p-0.5"
-                        label={`从历史中删除 ${dir}`}
-                        onClick={() => handleForgetPath(dir)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </Dropdown>
-            </div>
-            <textarea
-              className="mt-3 h-24 w-full resize-none rounded-md border border-border bg-panel-bg px-3 py-2 text-[13px] text-text-primary outline-none focus:border-border-strong"
-              placeholder="需求正文"
-              value={draftBody}
-              onChange={(event) => setDraftBody(event.target.value)}
-            />
-            <div className="mt-3 flex justify-end">
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() => void handleCreate()}
-              >
-                添加到待办
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex h-full min-h-0 gap-3 overflow-x-auto pb-2">
-          {KANBAN_CARD_COLUMNS.map((column) => {
-            const columnCards = grouped.get(column) ?? []
-            const acceptsDrop = USER_WRITABLE_COLUMNS.includes(column)
-            return (
-              <section
-                key={column}
-                className={cn(
-                  'flex min-h-0 w-[260px] flex-none flex-col rounded-lg border border-border bg-surface-soft',
-                  dropTarget === column && 'ring-1 ring-border-strong'
-                )}
-                onDragOver={
-                  acceptsDrop
-                    ? (event) => {
-                        event.preventDefault()
-                        event.dataTransfer.dropEffect = 'move'
-                        setDropTarget((current) =>
-                          current === column ? current : column
-                        )
-                      }
-                    : undefined
-                }
-                onDragLeave={
-                  acceptsDrop
-                    ? (event) => {
-                        // dragleave 会从子元素冒泡上来，只有真正离开整列才清掉高亮。
-                        const nextTarget = event.relatedTarget as Node | null
-                        if (event.currentTarget.contains(nextTarget)) return
-                        setDropTarget((current) =>
-                          current === column ? null : current
-                        )
-                      }
-                    : undefined
-                }
-                onDrop={
-                  acceptsDrop
-                    ? (event) => {
-                        event.preventDefault()
-                        handleDrop(column, draggingCardId)
-                      }
-                    : undefined
-                }
-              >
-                <header className="shrink-0 border-b border-border px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold text-text-primary">
-                      {COLUMN_LABELS[column]}
-                    </span>
-                    <span className="text-[12px] text-text-muted">
-                      {columnCards.length}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-text-muted">
-                    {COLUMN_HINTS[column]}
-                  </div>
-                </header>
-                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-                  {columnCards.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-border px-3 py-6 text-center text-[12px] text-text-muted">
-                      暂无卡片
-                    </div>
-                  ) : (
-                    columnCards.map((card) => {
-                      const collapsed = !expandedCardIds.has(card.id)
-                      const cardDate = formatCardDate(card.createdAt)
-                      return (
-                        <article
-                          key={card.id}
-                          className={cn(
-                            'rounded-md border border-border bg-panel-bg px-3 py-2.5',
-                            !busy &&
-                              !isRunning(card.column) &&
-                              'cursor-grab active:cursor-grabbing',
-                            draggingCardId === card.id && 'opacity-60'
-                          )}
-                          draggable={!busy && !isRunning(card.column)}
-                          onDragStart={(event) => {
-                            setDraggingCardId(card.id)
-                            event.dataTransfer.effectAllowed = 'move'
-                            // 部分 webview 不 setData 就不启动拖拽。
-                            event.dataTransfer.setData('text/plain', card.id)
-                          }}
-                          onDragEnd={() => {
-                            setDraggingCardId(null)
-                            setDropTarget(null)
-                          }}
-                        >
-                          <div className="flex items-start gap-1">
-                            <div className="min-w-0 flex-1 text-[13px] font-medium text-text-primary">
-                              {card.title}
-                            </div>
-                            {cardDate && (
-                              <span className="mt-0.5 shrink-0 text-[11px] text-text-muted">
-                                {cardDate}
-                              </span>
-                            )}
-                            <IconButton
-                              icon={
-                                collapsed ? 'chevron-right' : 'chevron-down'
-                              }
-                              label={collapsed ? '展开卡片' : '收起卡片'}
-                              size={14}
-                              className="-mr-1 -mt-0.5 p-0.5"
-                              onClick={() => toggleCardExpanded(card.id)}
-                            />
-                          </div>
-                          {card.body.trim() && (
-                            <CollapsibleText
-                              text={card.body}
-                              className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-text-secondary"
-                            />
-                          )}
-                          {!collapsed && (
-                            <>
-                              <div className="mt-2 truncate text-[11px] text-text-muted">
-                                {card.workingDir}
-                              </div>
-                              {card.attempt > 0 && (
-                                <div className="mt-0.5 text-[11px] text-text-muted">
-                                  第 {card.attempt} 次尝试
-                                </div>
-                              )}
-                              {card.note && (
-                                <CollapsibleText
-                                  text={card.note}
-                                  className={cn(
-                                    'mt-1 text-[11px]',
-                                    card.column === 'blocked'
-                                      ? 'text-danger'
-                                      : 'text-text-muted'
-                                  )}
-                                />
-                              )}
-                              <div className="mt-2 flex items-center gap-2">
-                                <select
-                                  className="min-w-0 flex-1 rounded-md border border-border bg-panel-bg px-2 py-1 text-[12px] text-text-secondary outline-none disabled:opacity-60"
-                                  value={card.column}
-                                  disabled={busy || isRunning(card.column)}
-                                  onChange={(event) =>
-                                    void handleMove(
-                                      card.id,
-                                      event.target.value as KanbanCardColumn
-                                    )
-                                  }
-                                >
-                                  {USER_WRITABLE_COLUMNS.map((target) => (
-                                    <option key={target} value={target}>
-                                      {COLUMN_LABELS[target]}
-                                    </option>
-                                  ))}
-                                  {isRunning(card.column) && (
-                                    <option value={card.column}>
-                                      {COLUMN_LABELS[card.column]}
-                                    </option>
-                                  )}
-                                </select>
-                                <IconButton
-                                  icon="trash"
-                                  label="删除卡片"
-                                  disabled={busy || isRunning(card.column)}
-                                  onClick={() => void handleDelete(card.id)}
-                                />
-                              </div>
-                            </>
-                          )}
-                        </article>
-                      )
-                    })
+        <div className="grid min-h-0 flex-1 grid-cols-5 gap-3">
+          <section className="flex min-h-0 flex-col gap-3">
+            {PUBLIC_AREA_COLUMNS.map((column) => {
+              const columnCards = cardsByColumn.get(column) ?? []
+              return (
+                <div
+                  key={column}
+                  {...columnDragProps(column)}
+                  className={cn(
+                    'flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface-soft',
+                    sameDropTarget(dropTarget, { kind: 'column', column }) &&
+                      'ring-1 ring-inset ring-border-strong'
                   )}
+                >
+                  <header className="shrink-0 border-b border-border px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[13px] font-semibold text-text-primary">
+                        {COLUMN_LABELS[column]}
+                      </span>
+                      <span className="text-[12px] text-text-muted">
+                        {columnCards.length}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-text-muted">
+                      {COLUMN_HINTS[column]}
+                    </div>
+                  </header>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                    <KanbanCardList
+                      cards={columnCards}
+                      handlers={handlers}
+                      emptyHint="暂无卡片"
+                    />
+                  </div>
                 </div>
-              </section>
-            )
-          })}
+              )
+            })}
+          </section>
+
+          <section className="col-span-4 flex min-h-0 flex-col gap-2">
+            <div className="flex shrink-0 items-center gap-1">
+              <IconButton
+                icon="chevron-right"
+                label="上一页"
+                className="rotate-180"
+                onClick={() =>
+                  setAnchorDayKey((current) =>
+                    shiftAnchorDayKey(scale, current, -1)
+                  )
+                }
+              />
+              <span className="min-w-[7rem] text-center text-[13px] font-medium text-text-primary">
+                {anchorLabel(scale, anchorDayKey)}
+              </span>
+              <IconButton
+                icon="chevron-right"
+                label="下一页"
+                onClick={() =>
+                  setAnchorDayKey((current) =>
+                    shiftAnchorDayKey(scale, current, 1)
+                  )
+                }
+              />
+              <Button
+                variant="ghost"
+                className="h-8 px-2 text-[12px]"
+                onClick={() => {
+                  setAnchorDayKey(today)
+                  setRecenterToken((current) => current + 1)
+                }}
+              >
+                回到今天
+              </Button>
+              <div className="ml-auto flex items-center gap-1">
+                {CALENDAR_SCALES.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setScale(item)}
+                    className={cn(
+                      'rounded-md px-2 py-1 text-[12px] transition-colors',
+                      item === scale
+                        ? 'bg-surface-muted text-text-primary'
+                        : 'text-text-muted hover:text-text-secondary'
+                    )}
+                  >
+                    {CALENDAR_SCALE_LABELS[item]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div
+              ref={calendarScrollRef}
+              className="relative flex min-h-0 flex-1 overflow-x-auto border border-border bg-panel-bg"
+            >
+              {hasUnscheduled && unscheduledSlots && (
+                <CalendarBucketColumn
+                  bucket={UNSCHEDULED_BUCKET}
+                  scale={scale}
+                  cardsBySlot={unscheduledSlots}
+                  preferredSlot={
+                    preferredSlotByBucket[UNSCHEDULED_BUCKET_KEY] ?? null
+                  }
+                  onToggleSlot={(next) =>
+                    setPreferredSlot(UNSCHEDULED_BUCKET_KEY, next)
+                  }
+                  handlers={handlers}
+                  acceptsDrop={false}
+                  dropTarget={dropTarget}
+                  {...bucketDropHandlers(UNSCHEDULED_BUCKET_KEY)}
+                />
+              )}
+              {buckets.map((bucket) => (
+                <CalendarBucketColumn
+                  key={bucket.key}
+                  bucket={bucket}
+                  scale={scale}
+                  cardsBySlot={calendarGroups.get(bucket.key) ?? emptySlots()}
+                  preferredSlot={preferredSlotByBucket[bucket.key] ?? null}
+                  onToggleSlot={(next) => setPreferredSlot(bucket.key, next)}
+                  handlers={handlers}
+                  acceptsDrop={scale === 'day'}
+                  isToday={bucket.key === bucketKeyOf(scale, today)}
+                  dropTarget={dropTarget}
+                  {...bucketDropHandlers(bucket.key)}
+                />
+              ))}
+            </div>
+          </section>
         </div>
       </main>
+
+      {createModalOpen && (
+        <CreateCardModal
+          defaultWorkingDir={workingDir ?? ''}
+          extraPathCandidates={sessionWorkingDirs}
+          defaultDate={today}
+          onClose={() => setCreateModalOpen(false)}
+          onCreated={refreshKanbanBoard}
+        />
+      )}
+
+      {editingCard && (
+        <EditCardModal
+          card={editingCard}
+          onClose={() => setEditingCardId(null)}
+          onSaved={refreshKanbanBoard}
+        />
+      )}
     </div>
   )
 }

@@ -100,7 +100,11 @@ export default function App() {
               <ChatView isSidebarOpen={isOpen} onToggleSidebar={toggle} />
             )}
             {activeView === 'kanban' && (
-              <KanbanPage isSidebarOpen={isOpen} onToggleSidebar={toggle} />
+              <KanbanPage
+                isSidebarOpen={isOpen}
+                onToggleSidebar={toggle}
+                onOpenChat={() => setMainView('chat')}
+              />
             )}
           </Suspense>
           <TransientHintDialog />

@@ -270,6 +270,8 @@ export interface KanbanCard {
   sessionId?: string
   attempt: number
   note?: string
+  /** 卡片在日历上的归属日（`YYYY-MM-DD`）；空串表示旧数据无法确定归属日。 */
+  date: string
   createdAt: string
   updatedAt: string
 }

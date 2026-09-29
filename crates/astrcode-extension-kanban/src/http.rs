@@ -12,7 +12,7 @@ use serde_json::json;
 
 use crate::{
     RuntimeHolder,
-    board::{BoardStoreError, Card, CardColumn, now_rfc3339},
+    board::{BoardStoreError, Card, CardColumn, now_rfc3339, parse_day},
 };
 
 pub const ROUTE_BOARD: &str = "/board";
@@ -83,6 +83,8 @@ pub struct CardDto {
     pub attempt: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
+    /// 卡片在日历上的归属日；空串表示归属日未知（旧数据），前端归入「未排期」。
+    pub date: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -98,6 +100,7 @@ impl From<&Card> for CardDto {
             session_id: card.session_id.clone(),
             attempt: card.attempt,
             note: card.note.clone(),
+            date: card.date.clone(),
             created_at: card.created_at.clone(),
             updated_at: card.updated_at.clone(),
         }
@@ -114,6 +117,8 @@ struct CreateCardRequest {
     column: Option<CardColumnDto>,
     #[serde(default)]
     working_dir: Option<String>,
+    #[serde(default)]
+    date: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -127,6 +132,8 @@ struct UpdateCardRequest {
     column: Option<CardColumnDto>,
     #[serde(default)]
     working_dir: Option<String>,
+    #[serde(default)]
+    date: Option<String>,
 }
 
 pub struct KanbanHttpHandler {
@@ -170,7 +177,11 @@ impl ExtensionHttpHandler for KanbanHttpHandler {
                         "未指定工作目录，且扩展配置中没有 defaultWorkingDir",
                     ));
                 };
-                let card = Card::new(request.title, request.body, working_dir, column);
+                let date = resolve_day(request.date.as_deref())?;
+                let mut card = Card::new(request.title, request.body, working_dir, column);
+                if let Some(date) = date {
+                    card.date = date;
+                }
                 let created = card.clone();
                 runtime
                     .store()
@@ -212,6 +223,7 @@ impl ExtensionHttpHandler for KanbanHttpHandler {
                     },
                     ExtensionHttpMethod::Patch => {
                         let request: UpdateCardRequest = ctx.json()?;
+                        let date = resolve_day(request.date.as_deref())?;
                         let column = match request.column {
                             Some(column) => match column.into_user_column() {
                                 Some(column) => Some(column),
@@ -240,6 +252,9 @@ impl ExtensionHttpHandler for KanbanHttpHandler {
                                 }
                                 if let Some(working_dir) = &request.working_dir {
                                     card.working_dir = working_dir.clone();
+                                }
+                                if let Some(date) = &date {
+                                    card.date = date.clone();
                                 }
                                 if let Some(column) = column {
                                     card.column = column;
@@ -271,6 +286,13 @@ fn rejected_column() -> ExtensionHttpResponse {
 
 fn not_found() -> ExtensionHttpResponse {
     ExtensionHttpResponse::error(404, "not_found", "未知的看板路由")
+}
+
+/// 校验并归一化请求里的归属日。
+///
+/// 缺省时返回 `None`：新建走 [`Card::new`] 的创建当天，更新保持原值不动。
+fn resolve_day(value: Option<&str>) -> Result<Option<String>, ExtensionError> {
+    value.map(parse_day).transpose().map_err(bad_request)
 }
 
 fn bad_request(error: BoardStoreError) -> ExtensionError {
@@ -333,5 +355,23 @@ mod tests {
             "unexpected": true
         }))
         .expect_err("unknown fields must be rejected");
+    }
+    #[test]
+    fn resolve_day_normalizes_and_rejects_bad_days() {
+        assert_eq!(resolve_day(None).unwrap(), None);
+        assert_eq!(
+            resolve_day(Some("2026-3-7")).unwrap().as_deref(),
+            Some("2026-03-07")
+        );
+        assert!(resolve_day(Some("2026-13-01")).is_err());
+        assert!(resolve_day(Some("")).is_err());
+    }
+
+    #[test]
+    fn update_request_accepts_date_and_still_rejects_unknown_fields() {
+        serde_json::from_value::<UpdateCardRequest>(json!({ "date": "2026-03-07" }))
+            .expect("date 必须被接受");
+        serde_json::from_value::<UpdateCardRequest>(json!({ "unexpected": true }))
+            .expect_err("unknown fields must be rejected");
     }
 }

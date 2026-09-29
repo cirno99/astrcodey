@@ -798,4 +798,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearTransientHint: () => {
     set({ transientHint: null })
   },
+
+  showTransientHint: (message: string) => {
+    set({ transientHint: message })
+  },
 }))

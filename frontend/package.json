@@ -31,7 +31,8 @@
     "test:session-stream": "esbuild src/store/sessionStreamController.ts src/store/pendingAskUserPoller.ts --bundle --platform=node --format=esm --outdir=../target/frontend-session-stream && node scripts/session-stream-controller.test.mjs",
     "test:project-path-history": "esbuild src/components/Kanban/projectPathHistory.ts --bundle --format=esm --outfile=../target/frontend-project-path-history/projectPathHistory.js && node scripts/project-path-history.test.mjs",
     "test:settings-model-options": "esbuild src/components/Settings/settingsSupport.ts --bundle --platform=node --format=esm --outfile=../target/frontend-settings-model-options/settingsSupport.js && node scripts/settings-model-options.test.mjs",
-    "check": "npm run check:protocol && npm run typecheck && npm run lint && npm run format:check && npm run test:contract && npm run test:assistant-run && npm run test:conversation-history && npm run test:streaming-cache && npm run test:tool-renderers && npm run test:delta && npm run test:session-stream && npm run test:project-path-history && npm run test:settings-model-options"
+    "test:kanban-calendar": "esbuild src/components/Kanban/calendar.ts src/components/Kanban/columns.ts --bundle --platform=node --format=esm --outdir=../target/frontend-kanban-calendar && node scripts/kanban-calendar.test.mjs",
+    "check": "npm run check:protocol && npm run typecheck && npm run lint && npm run format:check && npm run test:contract && npm run test:assistant-run && npm run test:conversation-history && npm run test:streaming-cache && npm run test:tool-renderers && npm run test:delta && npm run test:session-stream && npm run test:project-path-history && npm run test:kanban-calendar && npm run test:settings-model-options"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.8",

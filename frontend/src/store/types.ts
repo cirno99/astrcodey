@@ -96,6 +96,8 @@ export interface AppState {
   abortCurrentTurn: () => Promise<void>
   applyDelta: (delta: import('../services/types').ConversationDelta) => void
   clearTransientHint: () => void
+  /** 用 `TransientHintDialog` 弹一条一次性提示；调用方不必自己持有状态。 */
+  showTransientHint: (message: string) => void
   toggleComposerDeliveryMode: () => void
   injectPendingMessage: (id: string) => Promise<void>
   removePendingMessage: (id: string) => void

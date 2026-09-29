@@ -417,6 +417,7 @@ function decodeKanbanCard(value: unknown): KanbanCard {
     sessionId: optionalString(object, 'sessionId'),
     attempt: requiredNumber(object, 'attempt'),
     note: optionalString(object, 'note'),
+    date: requiredString(object, 'date'),
     createdAt: requiredString(object, 'createdAt'),
     updatedAt: requiredString(object, 'updatedAt'),
   }
