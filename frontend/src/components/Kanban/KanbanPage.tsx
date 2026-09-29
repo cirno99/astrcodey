@@ -77,7 +77,7 @@ export default function KanbanPage({
   const sessions = useAppStore((s) => s.sessions)
   const cards = useAppStore((s) => s.kanbanCards)
   const refreshKanbanBoard = useAppStore((s) => s.refreshKanbanBoard)
-  const deleteSession = useAppStore((s) => s.deleteSession)
+  const deleteSessions = useAppStore((s) => s.deleteSessions)
   const switchSession = useAppStore((s) => s.switchSession)
   const showTransientHint = useAppStore((s) => s.showTransientHint)
 
@@ -212,21 +212,42 @@ export default function KanbanPage({
   )
 
   /**
-   * 删除卡片。
+   * 批量删除卡片；单张删除是它长度为 1 的特例。
    *
    * 「已完成」卡片绑定的会话是自动化为它建的，卡片删掉后不再有任何记录指向该会话，
    * 因此一并删除。反方向不成立：删除会话不动卡片——看板数据在扩展的 board.json 里，
    * 与会话存储互不依赖。
+   *
+   * 会话先删、卡片后删，与单张删除保持同一顺序；卡片逐张发请求，本地扩展路由下并发
+   * 代价可忽略，因此不为它新增批量路由。整组删除只有部分成功时，失败的卡片会留在
+   * 原处并把错误显示在页面顶部，用户重试即可。
    */
-  const handleDelete = useCallback(
-    async (cardId: string) => {
+  const handleDeleteMany = useCallback(
+    async (cardIds: string[]) => {
+      if (cardIds.length === 0) return
       setBusy(true)
       try {
-        const card = cards.find((item) => item.id === cardId)
-        if (card?.column === 'done' && card.sessionId) {
-          await deleteSession(card.sessionId)
+        const sessionIds: string[] = []
+        for (const card of cards) {
+          if (!cardIds.includes(card.id)) continue
+          if (card.column === 'done' && card.sessionId) {
+            sessionIds.push(card.sessionId)
+          }
         }
-        await api.deleteKanbanCard(cardId)
+        if (sessionIds.length > 0) {
+          await deleteSessions(sessionIds)
+        }
+        const results = await Promise.allSettled(
+          cardIds.map((cardId) => api.deleteKanbanCard(cardId))
+        )
+        const failure = results.find((result) => result.status === 'rejected')
+        if (failure?.status === 'rejected') {
+          setErrorMessage(
+            failure.reason instanceof Error
+              ? failure.reason.message
+              : String(failure.reason)
+          )
+        }
         await refreshKanbanBoard()
       } catch (err) {
         setErrorMessage(err instanceof Error ? err.message : String(err))
@@ -234,7 +255,15 @@ export default function KanbanPage({
         setBusy(false)
       }
     },
-    [cards, deleteSession, refreshKanbanBoard]
+    [cards, deleteSessions, refreshKanbanBoard]
+  )
+
+  /** 单张删除复用同一条路径，避免两处各写一遍「先删会话、再删卡片」的顺序。 */
+  const handleDelete = useCallback(
+    (cardId: string) => {
+      void handleDeleteMany([cardId])
+    },
+    [handleDeleteMany]
   )
 
   const toggleCardExpanded = useCallback((cardId: string) => {
@@ -302,6 +331,7 @@ export default function KanbanPage({
       toggleExpanded: toggleCardExpanded,
       move: moveCard,
       remove: handleDelete,
+      removeMany: handleDeleteMany,
       dragStart: setDraggingCardId,
       dragEnd: handleDragEnd,
       openConversation: handleOpenConversation,
@@ -312,6 +342,7 @@ export default function KanbanPage({
       draggingCardId,
       expandedCardIds,
       handleDelete,
+      handleDeleteMany,
       handleDragEnd,
       handleOpenConversation,
       moveCard,

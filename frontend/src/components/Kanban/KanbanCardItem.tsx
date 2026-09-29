@@ -21,6 +21,8 @@ export interface KanbanCardHandlers {
   toggleExpanded: (cardId: string) => void
   move: (cardId: string, move: CardMove) => void
   remove: (cardId: string) => void
+  /** 整组删除：按项目路径分组的组头用它一次删掉该组全部卡片。 */
+  removeMany: (cardIds: string[]) => void
   dragStart: (cardId: string) => void
   dragEnd: () => void
   /** 打开卡片绑定的对话；卡片还没有对话时由页面给出提示。 */

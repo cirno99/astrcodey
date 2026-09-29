@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   forgetProjectPath,
   mergeProjectPathCandidates,
+  readIgnoredProjectPaths,
   readProjectPathHistory,
   rememberProjectPath,
 } from '../../target/frontend-project-path-history/projectPathHistory.js'
@@ -44,13 +45,61 @@ assert.equal(capped.length, 10)
 assert.equal(capped[0], '/dir-14')
 assert.equal(capped.includes('/a'), false, '超出上限的旧路径必须被丢弃')
 
-// 删除只作用于历史：被删的路径落盘后不再出现。
+// 删除同时清历史并记进忽略集合：被删的路径落盘后不再出现在候选里。
 assert.deepEqual(forgetProjectPath('/dir-14'), capped.slice(1))
 assert.deepEqual(readProjectPathHistory(), capped.slice(1))
 
 // 删除不存在的路径、以及空路径，都是无操作。
 assert.deepEqual(forgetProjectPath('/never-stored'), capped.slice(1))
 assert.deepEqual(forgetProjectPath('   '), capped.slice(1))
+
+// ── 忽略：删除必须挡住所有来源的候选，而不只是历史 ──
+
+// 候选是历史、默认目录与会话目录的并集，只清历史的话，会话目录推导出的候选会立刻回来。
+// 前面两次删除已经记下忽略项，这里从它们的真实状态接着断言，不假设空列表。
+assert.deepEqual(readIgnoredProjectPaths(), ['/never-stored', '/dir-14'])
+assert.deepEqual(forgetProjectPath('/from-session'), capped.slice(1))
+assert.deepEqual(readIgnoredProjectPaths(), [
+  '/from-session',
+  '/never-stored',
+  '/dir-14',
+])
+
+// 被忽略的路径必须从候选里剔除，无论它来自哪个来源。
+assert.deepEqual(
+  mergeProjectPathCandidates(
+    ['/c', '/from-session'],
+    ['/from-session', '/d'],
+    readIgnoredProjectPaths()
+  ),
+  ['/c', '/d']
+)
+assert.deepEqual(
+  mergeProjectPathCandidates([], ['/from-session'], ['/from-session']),
+  []
+)
+
+// 再次使用即撤销忽略：用户又用它建了卡片，说明之前那次删除不再成立。
+rememberProjectPath('/from-session')
+assert.deepEqual(readIgnoredProjectPaths(), ['/never-stored', '/dir-14'])
+assert.equal(readProjectPathHistory()[0], '/from-session')
+assert.deepEqual(
+  mergeProjectPathCandidates([], ['/from-session'], readIgnoredProjectPaths()),
+  ['/from-session']
+)
+
+// 忽略集合也有上限，超出后丢弃最早忽略的路径。
+for (let index = 0; index < 55; index += 1) {
+  forgetProjectPath(`/ignored-${index}`)
+}
+const ignored = readIgnoredProjectPaths()
+assert.equal(ignored.length, 50)
+assert.equal(ignored[0], '/ignored-54')
+assert.equal(
+  ignored.includes('/ignored-0'),
+  false,
+  '超出上限的旧忽略必须被丢弃'
+)
 
 // 存储内容损坏时回退为空历史，而不是把异常抛给看板页。
 storage = createStorage()

@@ -4,6 +4,7 @@ import * as api from '../../services/api'
 import {
   forgetProjectPath,
   mergeProjectPathCandidates,
+  readIgnoredProjectPaths,
   readProjectPathHistory,
   rememberProjectPath,
 } from './projectPathHistory'
@@ -39,17 +40,22 @@ export function CreateCardModal({
   const [pathHistory, setPathHistory] = useState<string[]>(() =>
     readProjectPathHistory()
   )
+  /** 被用户删掉的候选；候选是多个来源的并集，只清历史挡不住会话目录。 */
+  const [ignoredPaths, setIgnoredPaths] = useState<string[]>(() =>
+    readIgnoredProjectPaths()
+  )
   const [pathMenuOpen, setPathMenuOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const pathCandidates = useMemo(
     () =>
-      mergeProjectPathCandidates(pathHistory, [
-        defaultWorkingDir,
-        ...extraPathCandidates,
-      ]),
-    [defaultWorkingDir, extraPathCandidates, pathHistory]
+      mergeProjectPathCandidates(
+        pathHistory,
+        [defaultWorkingDir, ...extraPathCandidates],
+        ignoredPaths
+      ),
+    [defaultWorkingDir, extraPathCandidates, ignoredPaths, pathHistory]
   )
 
   const handleSubmit = useCallback(async () => {
@@ -143,16 +149,17 @@ export function CreateCardModal({
               >
                 {dir}
               </button>
-              {/* 只有历史记录能删：会话推导出的候选删掉也会随会话列表立刻回来。 */}
-              {pathHistory.includes(dir) && (
-                <IconButton
-                  icon="trash"
-                  size={14}
-                  className="p-0.5"
-                  label={`从历史中删除 ${dir}`}
-                  onClick={() => setPathHistory(forgetProjectPath(dir))}
-                />
-              )}
+              {/* 任何候选都能删：删除会记进忽略集合，挡住会话目录与默认目录推导出的候选。 */}
+              <IconButton
+                icon="trash"
+                size={14}
+                className="p-0.5"
+                label={`从候选中删除 ${dir}`}
+                onClick={() => {
+                  setPathHistory(forgetProjectPath(dir))
+                  setIgnoredPaths(readIgnoredProjectPaths())
+                }}
+              />
             </div>
           ))}
         </Dropdown>
