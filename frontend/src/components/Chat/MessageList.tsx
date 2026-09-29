@@ -84,9 +84,11 @@ const BlockRenderer = memo(
   function BlockRenderer({
     item,
     sessionId,
+    animateEntry,
   }: {
     item: MessageListItem
     sessionId: string | null
+    animateEntry: boolean
   }) {
     return (
       <div className="mx-auto w-[min(100%,var(--layout-content-max-width))] min-w-0 px-[var(--layout-content-inset-x)]">
@@ -95,6 +97,7 @@ const BlockRenderer = memo(
             blocks={item.blocks}
             actionBlocks={item.actionBlocks}
             sessionId={sessionId}
+            animateEntry={animateEntry}
           />
         ) : item.type === 'forkRow' ? (
           <ForkRow sessionId={sessionId} />
@@ -114,12 +117,15 @@ const BlockRenderer = memo(
   },
   (previous, next) =>
     previous.sessionId === next.sessionId &&
+    previous.animateEntry === next.animateEntry &&
     sameRenderedItem(previous.item, next.item)
 )
 
 const BLOCK_GAP_PX = 22
 const SCROLL_END_THRESHOLD_PX = 96
 const LOAD_OLDER_THRESHOLD_PX = 120
+/** fadeSlideUp 时长 320ms；多留余量，动画结束后再清除「新条目」标记。 */
+const ENTRY_ANIMATION_MS = 400
 
 export default function MessageList({
   blocks,
@@ -148,6 +154,47 @@ export default function MessageList({
     () => buildMessageListItems(blocks, assistantRunBreaks),
     [assistantRunBreaks, blocks]
   )
+  const previousItemIdsRef = useRef<readonly string[] | null>(null)
+  const trackedSessionRef = useRef(sessionId)
+  const [freshItemIds, setFreshItemIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  )
+
+  // 入场动画只对「追加到末尾」的条目播放：虚拟化会在滚动时卸载并重挂载行，
+  // 若把动画绑在挂载上，回滚历史时旧消息会反复淡入。前插（加载更早历史）同样不播放。
+  useLayoutEffect(() => {
+    const sessionChanged = trackedSessionRef.current !== sessionId
+    trackedSessionRef.current = sessionId
+    const previousIds = sessionChanged ? null : previousItemIdsRef.current
+
+    // 流式更新每帧都会重跑本效果，且条目数与末尾 id 均未变；此时尾部扫描必然
+    // 得不到新条目，直接跳过以避免每帧重建 id 数组（长会话下是 O(n) 分配）。
+    if (
+      previousIds !== null &&
+      previousIds.length === allItems.length &&
+      previousIds[previousIds.length - 1] === allItems[allItems.length - 1]?.id
+    ) {
+      return
+    }
+
+    const currentIds = allItems.map((item) => item.id)
+    previousItemIdsRef.current = currentIds
+    if (previousIds === null) return
+
+    const previous = new Set(previousIds)
+    const added: string[] = []
+    for (let index = currentIds.length - 1; index >= 0; index -= 1) {
+      if (previous.has(currentIds[index])) break
+      added.push(currentIds[index])
+    }
+    if (added.length === 0) return
+
+    setFreshItemIds(new Set(added))
+    const timer = window.setTimeout(() => {
+      setFreshItemIds((current) => (current.size === 0 ? current : new Set()))
+    }, ENTRY_ANIMATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [allItems, sessionId])
   const getItemKey = useCallback(
     (index: number) => allItems[index]?.id ?? index,
     [allItems]
@@ -297,7 +344,11 @@ export default function MessageList({
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
-                  <BlockRenderer item={item} sessionId={sessionId} />
+                  <BlockRenderer
+                    item={item}
+                    sessionId={sessionId}
+                    animateEntry={freshItemIds.has(item.id)}
+                  />
                 </div>
               )
             })}

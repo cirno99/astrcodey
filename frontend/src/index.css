@@ -1,5 +1,53 @@
 @import 'tailwindcss';
 
+/* 自托管字体：Tauri 的 CSP 只放行 'self'（style-src/font-src），
+   远程 Google Fonts 会被拦截且离线不可用，因此改为随包分发。
+   仅内置 latin / latin-ext 子集，CJK 文本按 unicode-range 回退到系统字体。 */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/inter-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/outfit-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/outfit-latin-ext.woff2') format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @theme {
   --color-app-bg: var(--app-bg);
   --color-panel-bg: var(--panel-bg);
@@ -27,33 +75,33 @@
   --color-code-border: var(--code-border);
   --color-code-label: var(--code-label);
   --color-code-text: var(--code-text);
-  --color-avatar-surface: var(--avatar-surface);
-  --color-avatar-surface-strong: var(--avatar-surface-strong);
-  --color-avatar-text: var(--avatar-text);
   --shadow-soft: var(--shadow-soft);
   --shadow-composer-shell: var(--shadow-composer-shell);
   --shadow-focus-accent: var(--shadow-focus-accent);
   --shadow-surface-lg: var(--shadow-surface-lg);
-  --shadow-focus-warm: var(--shadow-focus-warm);
   --color-phase-idle: var(--phase-idle);
   --color-phase-thinking: var(--phase-thinking);
   --color-phase-calling-tool: var(--phase-calling-tool);
   --color-phase-streaming: var(--phase-streaming);
   --color-phase-error: var(--phase-error);
-  --color-terminal-border: var(--terminal-border);
-  --color-terminal-bg-from: var(--terminal-bg-from);
-  --color-terminal-bg-to: var(--terminal-bg-to);
-  --color-terminal-text: var(--terminal-text);
   --color-user-bubble: var(--user-bubble);
   --color-user-bubble-border: var(--user-bubble-border);
   --color-btn-primary-bg: var(--btn-primary-bg);
   --color-btn-primary-fg: var(--btn-primary-fg);
   --color-scrollbar-thumb: var(--scrollbar-thumb);
   --color-scrollbar-thumb-hover: var(--scrollbar-thumb-hover);
-  --font-outfit: var(--font-outfit);
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    sans-serif;
+  --font-outfit:
+    'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    sans-serif;
+  --font-mono:
+    'Cascadia Code', 'Fira Code', 'Consolas', 'SF Mono', Menlo, monospace;
   --animate-blink: blink 1s step-end infinite;
   --animate-message-enter: fadeSlideUp 320ms cubic-bezier(0.2, 1, 0.32, 1);
-  --animate-block-enter: fadeSlideUp 320ms cubic-bezier(0.2, 1, 0.32, 1);
 }
 
 *,
@@ -89,23 +137,15 @@
   --code-border: #e8e8e8;
   --code-label: #737373;
   --code-text: #262626;
-  --avatar-surface: #f5f5f5;
-  --avatar-surface-strong: #e8e8e8;
-  --avatar-text: #525252;
   --shadow-soft: 0 1px 3px rgba(73, 62, 92, 0.06);
   --shadow-composer-shell: 0 16px 46px rgba(73, 62, 92, 0.08);
   --shadow-focus-accent: 0 0 0 3px rgba(101, 93, 138, 0.08);
   --shadow-surface-lg: 0 12px 36px rgba(73, 62, 92, 0.14);
-  --shadow-focus-warm: var(--shadow-focus-accent);
   --phase-idle: #a3a3a3;
   --phase-thinking: #c6613f;
   --phase-calling-tool: #0284c7;
   --phase-streaming: #7c3aed;
   --phase-error: #dc2626;
-  --terminal-border: #e8e8e8;
-  --terminal-bg-from: #fafafa;
-  --terminal-bg-to: #ffffff;
-  --terminal-text: #262626;
   --user-bubble: #f4f4f5;
   --user-bubble-border: #ececec;
   --btn-primary-bg: #5b547e;
@@ -118,8 +158,6 @@
   --prose-blockquote-border: rgba(0, 0, 0, 0.12);
   --prose-table-border: rgba(0, 0, 0, 0.08);
   --prose-table-row-border: rgba(0, 0, 0, 0.04);
-  --prose-table-header: #201b16;
-  --font-outfit: 'Outfit', -apple-system, sans-serif;
   /* Layout tokens */
   --layout-page-padding-x: clamp(18px, 2.4vw, 32px);
   --layout-content-max-width: clamp(720px, 60vw, 820px);
@@ -130,13 +168,6 @@
   --layout-assistant-indent: calc(
     var(--layout-avatar-size) + var(--layout-avatar-gap)
   );
-  /* Legacy aliases (kept for gradual migration) */
-  --chat-content-max-width: var(--layout-content-max-width);
-  --chat-composer-max-width: var(--layout-content-max-width);
-  --chat-content-horizontal-padding: var(--layout-page-padding-x);
-  --chat-assistant-content-offset: var(--layout-assistant-indent);
-  --chat-assistant-center-shift: 0px;
-  --chat-composer-shell-padding-x: 16px;
 }
 
 @media (max-width: 640px) {
@@ -161,42 +192,34 @@
   --text-primary: #f1f1f1;
   --text-secondary: #b7b7b7;
   --text-muted: #858585;
-  --accent: #ff8a45;
-  --accent-strong: #ff8a45;
-  --accent-soft: rgba(255, 138, 69, 0.16);
+  --accent: #a99fd0;
+  --accent-strong: #bdb4e0;
+  --accent-soft: rgba(169, 159, 208, 0.16);
   --success-soft: rgba(21, 128, 61, 0.12);
   --success: #4ade80;
   --danger-soft: rgba(220, 38, 38, 0.12);
   --danger: #f87171;
   --warning-soft: rgba(180, 83, 9, 0.12);
   --warning: #fbbf24;
-  --link: #60a5fa;
+  --link: #b0a6d6;
   --overlay-backdrop: rgba(0, 0, 0, 0.6);
   --code-surface: #1b1b1c;
   --code-border: rgba(255, 255, 255, 0.1);
   --code-label: #808080;
   --code-text: #d4d4d4;
-  --avatar-surface: #262626;
-  --avatar-surface-strong: #323232;
-  --avatar-text: #a3a3a3;
   --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-composer-shell: 0 20px 52px rgba(0, 0, 0, 0.22);
-  --shadow-focus-accent: 0 0 0 3px rgba(255, 255, 255, 0.05);
+  --shadow-focus-accent: 0 0 0 3px rgba(169, 159, 208, 0.18);
   --shadow-surface-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-focus-warm: var(--shadow-focus-accent);
   --phase-idle: #6a6a6a;
   --phase-thinking: #d4734f;
   --phase-calling-tool: #38bdf8;
   --phase-streaming: #a78bfa;
   --phase-error: #f87171;
-  --terminal-border: rgba(255, 255, 255, 0.1);
-  --terminal-bg-from: #1d1d1f;
-  --terminal-bg-to: #151516;
-  --terminal-text: #d4d4d4;
   --user-bubble: #2a2a2b;
   --user-bubble-border: rgba(255, 255, 255, 0.08);
-  --btn-primary-bg: #b7b7b7;
-  --btn-primary-fg: #171717;
+  --btn-primary-bg: #b3a9d8;
+  --btn-primary-fg: #17171a;
   --scrollbar-thumb: rgba(255, 255, 255, 0.16);
   --scrollbar-thumb-hover: #525252;
   --prose-code-bg: rgba(255, 255, 255, 0.06);
@@ -205,7 +228,6 @@
   --prose-blockquote-border: rgba(255, 255, 255, 0.12);
   --prose-table-border: rgba(255, 255, 255, 0.08);
   --prose-table-row-border: rgba(255, 255, 255, 0.04);
-  --prose-table-header: #e0e0e0;
 }
 
 html,
@@ -218,13 +240,7 @@ body,
   overflow: hidden;
   background: var(--app-bg);
   color: var(--text-primary);
-  font-family:
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -293,7 +309,7 @@ body,
 
 code,
 pre {
-  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
 }
 
@@ -409,7 +425,7 @@ pre {
   text-align: left;
   padding: 8px 12px;
   font-weight: 600;
-  color: var(--prose-table-header);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--prose-table-border);
 }
 .prose-chat td {

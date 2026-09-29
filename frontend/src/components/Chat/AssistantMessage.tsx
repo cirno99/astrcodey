@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+import React from 'react'
 import type { ConversationBlock } from '../../services/types'
 import { MarkdownContent, StreamingMarkdown } from './MarkdownContent'
 import {
@@ -99,15 +99,3 @@ export function AssistantMessageContent({
     </div>
   )
 }
-
-function AssistantMessage({ block, reasoningText }: AssistantMessageProps) {
-  return (
-    <div className="flex items-start animate-message-enter motion-reduce:animate-none">
-      <div className="min-w-0 flex-1 pt-0.5">
-        <AssistantMessageContent block={block} reasoningText={reasoningText} />
-      </div>
-    </div>
-  )
-}
-
-export default memo(AssistantMessage)

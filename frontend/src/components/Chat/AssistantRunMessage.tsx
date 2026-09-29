@@ -29,6 +29,8 @@ interface AssistantRunMessageProps {
   blocks: AssistantLikeBlock[]
   actionBlocks: AssistantLikeBlock[] | null
   sessionId: string | null
+  /** 仅当该条目刚追加到消息列表末尾时为 true；滚动重挂载不重放动画。 */
+  animateEntry?: boolean
 }
 
 function AssistantRunActions({
@@ -304,6 +306,7 @@ function AssistantRunMessage({
   blocks,
   actionBlocks,
   sessionId,
+  animateEntry = false,
 }: AssistantRunMessageProps) {
   const runModel = buildAssistantRunModel(blocks)
   const completedReply = actionBlocks
@@ -313,7 +316,12 @@ function AssistantRunMessage({
     completedReply && actionBlocks ? assistantRunCopyText(actionBlocks) : ''
 
   return (
-    <div className="flex items-start animate-message-enter motion-reduce:animate-none">
+    <div
+      className={cn(
+        'flex items-start',
+        animateEntry && 'animate-message-enter motion-reduce:animate-none'
+      )}
+    >
       <div className="min-w-0 flex-1 pt-0.5">
         <div className="relative min-w-0 max-w-full overflow-wrap-anywhere bg-transparent py-2 text-text-primary prose-chat">
           {runModel.segments.map((segment, index) => {

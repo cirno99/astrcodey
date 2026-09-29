@@ -552,7 +552,7 @@ export default function InputBar({ presentation = 'docked' }: InputBarProps) {
     >
       <div
         className={cn(
-          'w-full translate-x-[var(--chat-assistant-center-shift)]',
+          'w-full',
           'mx-auto',
           isHero
             ? 'max-w-[var(--layout-hero-composer-max-width)]'
