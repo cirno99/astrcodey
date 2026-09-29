@@ -1,10 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use astrcode_extension_sdk::{
     builder::custom_event,
     extension::{CustomEventDeclaration, CustomEventDelivery, CustomEventEmitter, ExtensionError},
 };
 use parking_lot::Mutex;
+use rustc_hash::FxHashMap as HashMap;
 use serde_json::json;
 use tokio::sync::oneshot;
 

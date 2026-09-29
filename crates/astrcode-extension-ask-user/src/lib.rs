@@ -345,7 +345,7 @@ fn resolve_error_to_extension(error: ResolveError) -> ExtensionError {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Mutex};
+    use std::sync::Mutex;
 
     use astrcode_extension_sdk::{
         event::{EventDeliveryReceipt, EventSendError},
@@ -355,6 +355,7 @@ mod tests {
         },
         testing::{HttpContextBuilder, ToolContextBuilder},
     };
+    use rustc_hash::FxHashMap as HashMap;
 
     use super::*;
     use crate::model::{AskUserOption, AskUserQuestion};
@@ -558,7 +559,7 @@ mod tests {
             .answer(
                 "session-1",
                 "race",
-                HashMap::from([("Which approach?".into(), "B".into())]),
+                HashMap::from_iter([("Which approach?".into(), "B".into())]),
             )
             .unwrap();
         assert!(matches!(
@@ -588,11 +589,11 @@ mod tests {
 
         assert_eq!(registry.list("session-1").len(), 1);
         assert!(matches!(
-            registry.answer("wrong-session", "call-1", HashMap::new()),
+            registry.answer("wrong-session", "call-1", HashMap::default()),
             Err(ResolveError::NotFound)
         ));
         assert!(matches!(
-            registry.answer("session-1", "call-1", HashMap::new()),
+            registry.answer("session-1", "call-1", HashMap::default()),
             Err(ResolveError::InvalidAnswers(_))
         ));
 
@@ -600,7 +601,7 @@ mod tests {
             .answer(
                 "session-1",
                 "call-1",
-                HashMap::from([("Which approach?".into(), "A".into())]),
+                HashMap::from_iter([("Which approach?".into(), "A".into())]),
             )
             .unwrap();
         assert!(matches!(

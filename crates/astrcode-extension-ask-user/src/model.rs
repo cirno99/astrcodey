@@ -1,9 +1,7 @@
-use std::{
-    collections::{HashMap, HashSet},
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use astrcode_extension_sdk::tool::{ToolDefinition, ToolOrigin};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -93,7 +91,7 @@ impl PendingQuestion {
 
     /// 每个问题至少有一个推荐选项时返回自动选择的答案；否则 `None`。
     pub(crate) fn auto_recommended_answers(&self) -> Option<HashMap<String, String>> {
-        let mut answers = HashMap::new();
+        let mut answers = HashMap::default();
         for question in &self.questions {
             let recommended = question
                 .options
@@ -232,7 +230,7 @@ pub(crate) fn validate_input(input: &AskUserInput) -> Result<(), String> {
         ));
     }
 
-    let mut seen_questions = HashSet::new();
+    let mut seen_questions = HashSet::default();
     for question in &input.questions {
         if question.question.trim().is_empty() {
             return Err("question text must not be empty".into());
@@ -257,7 +255,7 @@ pub(crate) fn validate_input(input: &AskUserInput) -> Result<(), String> {
                 question.question
             ));
         }
-        let mut seen_labels = HashSet::new();
+        let mut seen_labels = HashSet::default();
         for option in &question.options {
             if option.label.trim().is_empty() {
                 return Err("option labels must not be empty".into());

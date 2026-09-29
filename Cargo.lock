@@ -330,6 +330,7 @@ dependencies = [
  "astrcode-extension-sdk",
  "async-trait",
  "parking_lot",
+ "rustc-hash",
  "serde",
  "serde_json",
  "tokio",

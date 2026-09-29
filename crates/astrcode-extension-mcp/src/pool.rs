@@ -15,7 +15,7 @@ use std::{
     time::Duration,
 };
 
-use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet, FxHasher};
 use serde_json::Value;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -114,7 +114,7 @@ struct ServerId(String);
 impl ServerId {
     fn from_config(server: &McpServerConfig) -> Self {
         use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = FxHasher::default();
         server.transport.hash(&mut hasher);
         match server.transport {
             crate::config::McpTransport::Stdio => {

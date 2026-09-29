@@ -12,6 +12,7 @@
 
 use std::sync::Arc;
 
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{message_attachment::MessageAttachment, tool::ToolDefinition};
@@ -905,7 +906,7 @@ pub struct LlmClientConfig {
     /// Provider 特有选项。
     pub extras: ProviderExtras,
     /// 额外的 HTTP 请求头。
-    pub extra_headers: std::collections::HashMap<String, String>,
+    pub extra_headers: FxHashMap<String, String>,
     /// 标准化 thinking 配置。
     #[serde(default)]
     pub thinking: ThinkingConfig,
@@ -942,7 +943,7 @@ impl LlmClientConfig {
             retry_base_delay_ms: settings.retry_base_delay_ms,
             supports_strict_tool_use: settings.supports_strict_tool_use,
             extras,
-            extra_headers: std::collections::HashMap::default(),
+            extra_headers: FxHashMap::default(),
             thinking: settings.thinking.clone(),
             thinking_capability: settings.thinking_capability.clone(),
             thinking_configured: settings.thinking_configured,
@@ -991,7 +992,7 @@ impl Default for LlmClientConfig {
             retry_base_delay_ms: crate::config::defaults::DEFAULT_LLM_RETRY_BASE_DELAY_MS,
             supports_strict_tool_use: false,
             extras: ProviderExtras::None,
-            extra_headers: std::collections::HashMap::default(),
+            extra_headers: FxHashMap::default(),
             thinking: ThinkingConfig::default(),
             thinking_capability: None,
             thinking_configured: false,

@@ -9,6 +9,7 @@ description = "Interactive askUser extension"
 astrcode-extension-sdk = { path = "../astrcode-extension-sdk" }
 async-trait = { workspace = true }
 parking_lot = { workspace = true }
+rustc-hash = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["sync", "time"] }

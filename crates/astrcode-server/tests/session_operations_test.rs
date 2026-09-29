@@ -1,7 +1,6 @@
 //! 集成测试：ServerSessionOperations 的 submit_turn 同步/异步路径。
 
 use std::{
-    collections::HashMap,
     path::PathBuf,
     sync::{
         Arc,
@@ -38,6 +37,7 @@ use astrcode_storage::{
     StorageError, ToolResultArtifactInput, ToolResultArtifactRef, ToolResultArtifactStore,
     in_memory::InMemoryEventStore,
 };
+use rustc_hash::FxHashMap as HashMap;
 use tokio::sync::{Mutex as AsyncMutex, Semaphore, mpsc, oneshot};
 
 /// 在发送 Done 前阻塞，便于在活跃 turn 期间调用 `inject_message`。
@@ -159,7 +159,7 @@ impl BlockingChildCreateStore {
             restore_started: Semaphore::new(0),
             release_restore: Semaphore::new(0),
             restore_finished: Semaphore::new(0),
-            recycled: AsyncMutex::new(HashMap::new()),
+            recycled: AsyncMutex::new(HashMap::default()),
             fail_sync_session: AsyncMutex::new(None),
         }
     }

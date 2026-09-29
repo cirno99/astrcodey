@@ -5,6 +5,7 @@ use std::{
 };
 
 use astrcode_extension_sdk::hostpaths;
+use rustc_hash::FxHasher;
 use serde::Deserialize;
 
 /// 全局 MCP 配置文件：`~/.astrcode/mcp.json`。
@@ -143,7 +144,7 @@ pub(crate) fn load_config_from_paths(
 }
 
 fn config_fingerprint(servers: &[McpServerConfig], diagnostics: &[String]) -> u64 {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let mut hasher = FxHasher::default();
     servers.hash(&mut hasher);
     diagnostics.hash(&mut hasher);
     hasher.finish()
