@@ -21,6 +21,7 @@ export type IconName =
   | 'monitor'
   | 'branch'
   | 'spark'
+  | 'board'
 
 type IconProps = SVGProps<SVGSVGElement> & {
   name: IconName
@@ -183,6 +184,16 @@ const icons: Record<
       />
       <path d="m9 9 2.8 3L9 15" strokeWidth="1.8" />
       <path d="M13.5 15H16" strokeWidth="1.8" />
+    </svg>
+  ),
+  board: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" strokeWidth="2" />
+      <path d="M9 4v16" strokeWidth="2" />
+      <path d="M15 4v16" strokeWidth="2" />
+      <path d="M5 8h2" strokeWidth="2" />
+      <path d="M11 8h2" strokeWidth="2" />
+      <path d="M17 8h2" strokeWidth="2" />
     </svg>
   ),
 }

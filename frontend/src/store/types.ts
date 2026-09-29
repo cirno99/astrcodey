@@ -3,6 +3,7 @@ import type {
   ConversationBlock,
   ConversationControlState,
   ExtensionStateView,
+  KanbanCard,
   KeybindingInfo,
   PendingAskUserQuestion,
   SessionListItem,
@@ -56,6 +57,7 @@ export interface AppState {
   keybindings: KeybindingInfo[]
   slashCommands: SlashCommandInfo[]
   extensions: ExtensionStateView[]
+  kanbanCards: KanbanCard[]
   transientHint: string | null
   pendingMessages: PendingMessage[]
   pendingAskUserQuestions: Record<string, PendingAskUserQuestion>
@@ -63,6 +65,7 @@ export interface AppState {
   pendingAskUserRefreshInFlight: boolean
   askUserEventRevision: number
   askUserExtensionAvailable: boolean | null
+  kanbanExtensionAvailable: boolean | null
   composerDeliveryMode: MessageDelivery
 
   initServer: () => Promise<void>
@@ -78,6 +81,7 @@ export interface AppState {
   returnToLatestConversation: () => Promise<void>
   refreshPendingAskUserQuestions: () => Promise<void>
   refreshExtensionData: () => Promise<void>
+  refreshKanbanBoard: () => Promise<void>
   refreshCommands: () => Promise<void>
   executeExtensionCommand: (
     command: string,

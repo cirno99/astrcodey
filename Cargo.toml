@@ -30,6 +30,7 @@ members = [
     "crates/astrcode-extension-goal",
     "crates/astrcode-extension-memory",
     "crates/astrcode-extension-channels",
+    "crates/astrcode-extension-kanban",
     "crates/astrcode-extension-web-tools",
     "crates/astrcode-eval",
     "src-tauri",

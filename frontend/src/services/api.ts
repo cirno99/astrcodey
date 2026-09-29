@@ -4,6 +4,7 @@ import {
   decodeConversationItemsPage,
   decodeConversationSnapshot,
   decodeConversationState,
+  decodeKanbanBoard,
   decodePendingAskUserQuestionsResponse,
 } from './protocol'
 import type {
@@ -35,6 +36,7 @@ import type {
   ApprovalMode,
   ConfigView,
   CurrentModelInfo,
+  KanbanBoardResponse,
   ModelTestResult,
   ProviderCatalogView,
   RemoveProviderPresetResponse,
@@ -429,6 +431,52 @@ export async function setExtensionEnabled(
   return request('/api/extensions/set-enabled', {
     method: 'POST',
     body: JSON.stringify({ extensionId, enabled }),
+  })
+}
+
+// ── Kanban ──
+// 看板数据由 astrcode-kanban 扩展持有；前端只经扩展的认证路由读写。
+
+const KANBAN_EXTENSION_ID = 'astrcode-kanban'
+
+function kanbanPath(path: string): string {
+  return `/api/extensions/${KANBAN_EXTENSION_ID}${path}`
+}
+
+export async function getKanbanBoard(): Promise<KanbanBoardResponse> {
+  return decodeKanbanBoard(await request<unknown>(kanbanPath('/board')))
+}
+
+export async function createKanbanCard(input: {
+  title: string
+  body: string
+  workingDir: string
+  column?: KanbanBoardResponse['cards'][number]['column']
+}): Promise<void> {
+  await request<unknown>(kanbanPath('/cards'), {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function updateKanbanCard(
+  cardId: string,
+  patch: {
+    title?: string
+    body?: string
+    workingDir?: string
+    column?: KanbanBoardResponse['cards'][number]['column']
+  }
+): Promise<void> {
+  await request<unknown>(kanbanPath(`/cards/${encodeURIComponent(cardId)}`), {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+export async function deleteKanbanCard(cardId: string): Promise<void> {
+  await request<unknown>(kanbanPath(`/cards/${encodeURIComponent(cardId)}`), {
+    method: 'DELETE',
   })
 }
 

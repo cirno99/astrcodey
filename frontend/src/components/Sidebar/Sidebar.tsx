@@ -63,6 +63,7 @@ interface SidebarProps {
   onToggleSidebar: () => void
   onOpenChat: () => void
   onOpenPlugins: () => void
+  onOpenKanban: () => void
   onOpenSettings: () => void
 }
 
@@ -71,6 +72,7 @@ export default function Sidebar({
   onToggleSidebar,
   onOpenChat,
   onOpenPlugins,
+  onOpenKanban,
   onOpenSettings,
 }: SidebarProps) {
   const sessions = useAppStore((s) => s.sessions)
@@ -80,6 +82,9 @@ export default function Sidebar({
     effectiveConversationPhase(state.control, state.compactSubmitting)
   )
   const workingDir = useAppStore((s) => s.workingDir)
+  const kanbanExtensionAvailable = useAppStore(
+    (s) => s.kanbanExtensionAvailable
+  )
   const createSession = useAppStore((s) => s.createSession)
   const switchSession = useAppStore((s) => s.switchSession)
   const deleteSession = useAppStore((s) => s.deleteSession)
@@ -297,6 +302,23 @@ export default function Sidebar({
               </button>
             )
           })}
+          {/* 看板入口随看板插件启用状态显示或隐藏。 */}
+          {kanbanExtensionAvailable && (
+            <button
+              type="button"
+              className={cn(
+                'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-medium outline-none transition-colors duration-150',
+                activeView === 'kanban'
+                  ? 'bg-surface-muted text-text-primary'
+                  : 'text-text-primary hover:bg-surface-muted'
+              )}
+              onClick={onOpenKanban}
+              title="看板"
+            >
+              <Icon name="board" size={18} />
+              <span className="truncate">看板</span>
+            </button>
+          )}
         </div>
       </div>
 

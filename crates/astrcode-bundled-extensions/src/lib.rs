@@ -109,6 +109,13 @@ const BUNDLED_EXTENSION_CATALOG: &[BundledExtensionSpec] = &[
         factory: astrcode_extension_channels::extension,
         validate_config: astrcode_extension_channels::validate_config,
     },
+    #[cfg(feature = "kanban")]
+    BundledExtensionSpec {
+        id: "astrcode-kanban",
+        default_enabled: false,
+        factory: astrcode_extension_kanban::extension,
+        validate_config: astrcode_extension_kanban::validate_config,
+    },
     #[cfg(feature = "web-tools")]
     BundledExtensionSpec {
         id: "astrcode-web-tools",
@@ -302,6 +309,12 @@ mod tests {
             (
                 "astrcode-channels",
                 serde_json::json!({ "telegram": {} }),
+                serde_json::json!({ "unexpected": true }),
+            ),
+            #[cfg(feature = "kanban")]
+            (
+                "astrcode-kanban",
+                serde_json::json!({ "pollIntervalSecs": 60 }),
                 serde_json::json!({ "unexpected": true }),
             ),
             #[cfg(feature = "web-tools")]

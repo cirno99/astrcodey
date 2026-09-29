@@ -245,6 +245,7 @@ dependencies = [
  "astrcode-extension-channels",
  "astrcode-extension-coding",
  "astrcode-extension-goal",
+ "astrcode-extension-kanban",
  "astrcode-extension-mcp",
  "astrcode-extension-memory",
  "astrcode-extension-mode",
@@ -438,6 +439,24 @@ dependencies = [
  "chrono",
  "serde",
  "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "astrcode-extension-kanban"
+version = "0.3.16"
+dependencies = [
+ "astrcode-extension-sdk",
+ "async-trait",
+ "chrono",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tokio",
+ "tokio-util",
+ "tracing",
  "uuid",
 ]
 

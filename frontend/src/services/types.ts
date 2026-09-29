@@ -249,6 +249,35 @@ export interface PendingAskUserQuestionsResponse {
   questions: PendingAskUserQuestion[]
 }
 
+export const KANBAN_CARD_COLUMNS = [
+  'backlog',
+  'ready',
+  'analyzing',
+  'implementing',
+  'done',
+  'blocked',
+] as const
+
+export type KanbanCardColumn = (typeof KANBAN_CARD_COLUMNS)[number]
+
+/** 由 astrcode-kanban 扩展的 `/board` 路由返回的卡片。 */
+export interface KanbanCard {
+  id: string
+  title: string
+  body: string
+  column: KanbanCardColumn
+  workingDir: string
+  sessionId?: string
+  attempt: number
+  note?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KanbanBoardResponse {
+  cards: KanbanCard[]
+}
+
 export type ConversationDelta =
   | { kind: 'appendBlock'; block: ConversationBlock }
   | {

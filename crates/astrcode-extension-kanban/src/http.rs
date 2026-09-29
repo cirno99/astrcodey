@@ -1,0 +1,337 @@
+//! 看板页使用的认证 HTTP 路由。
+//!
+//! 这里只做线缆形状的解析与映射：真正的看板状态机在 [`crate::board`]，
+//! 自动化在 [`crate::automation`]。运行中列不接受用户写入。
+
+use astrcode_extension_sdk::extension::{
+    ExtensionError, ExtensionHttpHandler, ExtensionHttpMethod, ExtensionHttpResponse,
+    ExtensionHttpRoute, HttpContext,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+
+use crate::{
+    RuntimeHolder,
+    board::{BoardStoreError, Card, CardColumn, now_rfc3339},
+};
+
+pub const ROUTE_BOARD: &str = "/board";
+pub const ROUTE_CARDS: &str = "/cards";
+pub const ROUTE_CARD: &str = "/cards/{cardId}";
+
+pub fn routes() -> Vec<ExtensionHttpRoute> {
+    vec![
+        ExtensionHttpRoute::authenticated(ExtensionHttpMethod::Get, ROUTE_BOARD)
+            .description("读取全部看板卡片"),
+        ExtensionHttpRoute::authenticated(ExtensionHttpMethod::Post, ROUTE_CARDS)
+            .description("新建看板卡片"),
+        ExtensionHttpRoute::authenticated(ExtensionHttpMethod::Patch, ROUTE_CARD)
+            .description("更新看板卡片"),
+        ExtensionHttpRoute::authenticated(ExtensionHttpMethod::Delete, ROUTE_CARD)
+            .description("删除看板卡片"),
+    ]
+}
+
+/// 卡片列的线缆取值。
+///
+/// 与内部 [`CardColumn`] 分开定义：线缆契约不能随内部枚举重构而改变。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CardColumnDto {
+    Backlog,
+    Ready,
+    Analyzing,
+    Implementing,
+    Done,
+    Blocked,
+}
+
+impl CardColumnDto {
+    fn from_column(column: CardColumn) -> Self {
+        match column {
+            CardColumn::Backlog => Self::Backlog,
+            CardColumn::Ready => Self::Ready,
+            CardColumn::Analyzing => Self::Analyzing,
+            CardColumn::Implementing => Self::Implementing,
+            CardColumn::Done => Self::Done,
+            CardColumn::Blocked => Self::Blocked,
+        }
+    }
+
+    /// 用户可写入的列；运行中列由自动化独占，返回 `None`。
+    fn into_user_column(self) -> Option<CardColumn> {
+        match self {
+            Self::Backlog => Some(CardColumn::Backlog),
+            Self::Ready => Some(CardColumn::Ready),
+            Self::Done => Some(CardColumn::Done),
+            Self::Blocked => Some(CardColumn::Blocked),
+            Self::Analyzing | Self::Implementing => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardDto {
+    pub id: String,
+    pub title: String,
+    pub body: String,
+    pub column: CardColumnDto,
+    pub working_dir: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    pub attempt: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<&Card> for CardDto {
+    fn from(card: &Card) -> Self {
+        Self {
+            id: card.id.clone(),
+            title: card.title.clone(),
+            body: card.body.clone(),
+            column: CardColumnDto::from_column(card.column),
+            working_dir: card.working_dir.clone(),
+            session_id: card.session_id.clone(),
+            attempt: card.attempt,
+            note: card.note.clone(),
+            created_at: card.created_at.clone(),
+            updated_at: card.updated_at.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CreateCardRequest {
+    title: String,
+    #[serde(default)]
+    body: String,
+    #[serde(default)]
+    column: Option<CardColumnDto>,
+    #[serde(default)]
+    working_dir: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct UpdateCardRequest {
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    column: Option<CardColumnDto>,
+    #[serde(default)]
+    working_dir: Option<String>,
+}
+
+pub struct KanbanHttpHandler {
+    runtime: RuntimeHolder,
+}
+
+impl KanbanHttpHandler {
+    pub fn new(runtime: RuntimeHolder) -> Self {
+        Self { runtime }
+    }
+}
+
+#[async_trait::async_trait]
+impl ExtensionHttpHandler for KanbanHttpHandler {
+    async fn handle(&self, ctx: HttpContext) -> Result<ExtensionHttpResponse, ExtensionError> {
+        let Some(runtime) = self.runtime.lock().clone() else {
+            return Ok(unavailable());
+        };
+
+        match ctx.route().path.as_str() {
+            ROUTE_BOARD => {
+                let cards = runtime
+                    .store()
+                    .read(|board| board.cards.iter().map(CardDto::from).collect::<Vec<_>>())
+                    .map_err(internal)?;
+                Ok(ExtensionHttpResponse::json(200, json!({ "cards": cards })))
+            },
+            ROUTE_CARDS => {
+                let request: CreateCardRequest = ctx.json()?;
+                let column = request.column.unwrap_or(CardColumnDto::Backlog);
+                let Some(column) = column.into_user_column() else {
+                    return Ok(rejected_column());
+                };
+                let Some(working_dir) = request
+                    .working_dir
+                    .or_else(|| runtime.config().default_working_dir.clone())
+                else {
+                    return Ok(ExtensionHttpResponse::error(
+                        400,
+                        "invalid_input",
+                        "未指定工作目录，且扩展配置中没有 defaultWorkingDir",
+                    ));
+                };
+                let card = Card::new(request.title, request.body, working_dir, column);
+                let created = card.clone();
+                runtime
+                    .store()
+                    .mutate(move |board| {
+                        board.cards.push(created);
+                        Ok(())
+                    })
+                    .map_err(internal)?;
+                Ok(ExtensionHttpResponse::json(
+                    200,
+                    serde_json::to_value(CardDto::from(&card)).map_err(internal)?,
+                ))
+            },
+            ROUTE_CARD => {
+                let Some(card_id) = ctx.request().path_params.get("cardId").cloned() else {
+                    return Ok(ExtensionHttpResponse::error(
+                        400,
+                        "invalid_input",
+                        "缺少卡片 id",
+                    ));
+                };
+                match ctx.request().method {
+                    ExtensionHttpMethod::Delete => {
+                        runtime
+                            .store()
+                            .mutate(|board| {
+                                let before = board.cards.len();
+                                board.cards.retain(|card| card.id != card_id);
+                                if board.cards.len() == before {
+                                    return Err(BoardStoreError::CardNotFound(card_id.clone()));
+                                }
+                                Ok(())
+                            })
+                            .map_err(bad_request)?;
+                        Ok(ExtensionHttpResponse::json(
+                            200,
+                            json!({ "deleted": card_id }),
+                        ))
+                    },
+                    ExtensionHttpMethod::Patch => {
+                        let request: UpdateCardRequest = ctx.json()?;
+                        let column = match request.column {
+                            Some(column) => match column.into_user_column() {
+                                Some(column) => Some(column),
+                                None => return Ok(rejected_column()),
+                            },
+                            None => None,
+                        };
+                        let updated = runtime
+                            .store()
+                            .mutate(|board| {
+                                let Some(card) =
+                                    board.cards.iter_mut().find(|card| card.id == card_id)
+                                else {
+                                    return Err(BoardStoreError::CardNotFound(card_id.clone()));
+                                };
+                                if card.column.is_running() {
+                                    return Err(BoardStoreError::CardRunning {
+                                        card_id: card_id.clone(),
+                                    });
+                                }
+                                if let Some(title) = &request.title {
+                                    card.title = title.clone();
+                                }
+                                if let Some(body) = &request.body {
+                                    card.body = body.clone();
+                                }
+                                if let Some(working_dir) = &request.working_dir {
+                                    card.working_dir = working_dir.clone();
+                                }
+                                if let Some(column) = column {
+                                    card.column = column;
+                                }
+                                card.updated_at = now_rfc3339();
+                                Ok(card.clone())
+                            })
+                            .map_err(bad_request)?;
+                        Ok(ExtensionHttpResponse::json(
+                            200,
+                            serde_json::to_value(CardDto::from(&updated)).map_err(internal)?,
+                        ))
+                    },
+                    _ => Ok(not_found()),
+                }
+            },
+            _ => Ok(not_found()),
+        }
+    }
+}
+
+fn unavailable() -> ExtensionHttpResponse {
+    ExtensionHttpResponse::error(503, "kanban_unavailable", "看板扩展尚未启动")
+}
+
+fn rejected_column() -> ExtensionHttpResponse {
+    ExtensionHttpResponse::error(400, "invalid_input", "运行中的列由自动化独占，不能直接写入")
+}
+
+fn not_found() -> ExtensionHttpResponse {
+    ExtensionHttpResponse::error(404, "not_found", "未知的看板路由")
+}
+
+fn bad_request(error: BoardStoreError) -> ExtensionError {
+    ExtensionError::InvalidInput {
+        code: astrcode_extension_sdk::WireErrorCode::InvalidInput
+            .as_str()
+            .into(),
+        message: error.to_string(),
+        hint: None,
+    }
+}
+
+fn internal(error: impl std::fmt::Display) -> ExtensionError {
+    ExtensionError::Internal(error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn running_columns_are_not_user_writable() {
+        assert!(CardColumnDto::Analyzing.into_user_column().is_none());
+        assert!(CardColumnDto::Implementing.into_user_column().is_none());
+        for column in [
+            CardColumnDto::Backlog,
+            CardColumnDto::Ready,
+            CardColumnDto::Done,
+            CardColumnDto::Blocked,
+        ] {
+            assert!(column.into_user_column().is_some(), "{column:?}");
+        }
+    }
+
+    #[test]
+    fn card_dto_round_trips_every_column() {
+        for column in [
+            CardColumn::Backlog,
+            CardColumn::Ready,
+            CardColumn::Analyzing,
+            CardColumn::Implementing,
+            CardColumn::Done,
+            CardColumn::Blocked,
+        ] {
+            let mut card = Card::new("t".into(), "b".into(), "/tmp".into(), column);
+            card.note = Some("note".into());
+            let dto = CardDto::from(&card);
+            assert_eq!(
+                dto.column.into_user_column().is_some(),
+                !column.is_running()
+            );
+            assert_eq!(dto.id, card.id);
+        }
+    }
+
+    #[test]
+    fn create_request_rejects_unknown_fields() {
+        serde_json::from_value::<CreateCardRequest>(json!({
+            "title": "t",
+            "unexpected": true
+        }))
+        .expect_err("unknown fields must be rejected");
+    }
+}

@@ -9,8 +9,9 @@ import { useSidebarResize } from './hooks/useSidebarResize'
 
 const PluginsPage = lazy(() => import('./components/Plugins/PluginsPage'))
 const SettingsPage = lazy(() => import('./components/Settings/SettingsPage'))
+const KanbanPage = lazy(() => import('./components/Kanban/KanbanPage'))
 
-export type MainView = 'chat' | 'plugins' | 'settings'
+export type MainView = 'chat' | 'plugins' | 'settings' | 'kanban'
 
 function DeferredViewFallback() {
   return (
@@ -23,6 +24,9 @@ function DeferredViewFallback() {
 export default function App() {
   const connectionStatus = useAppStore((s) => s.connectionStatus)
   const initServer = useAppStore((s) => s.initServer)
+  const kanbanExtensionAvailable = useAppStore(
+    (s) => s.kanbanExtensionAvailable
+  )
   const [mainView, setMainView] = useState<MainView>('chat')
 
   const { width, isOpen, toggle, onResizeStart, isResizing } =
@@ -31,6 +35,12 @@ export default function App() {
   useEffect(() => {
     void initServer()
   }, [initServer])
+
+  // 看板页随看板插件启用状态显示或隐藏；插件不可用时不能停留在该视图。
+  const activeView: MainView =
+    mainView === 'kanban' && kanbanExtensionAvailable !== true
+      ? 'chat'
+      : mainView
 
   if (connectionStatus !== 'connected') {
     return <ConnectingScreen />
@@ -55,10 +65,11 @@ export default function App() {
             style={{ width, maxWidth: 'calc(100vw - 64px)' }}
           >
             <Sidebar
-              activeView={mainView}
+              activeView={activeView}
               onToggleSidebar={toggle}
               onOpenChat={() => setMainView('chat')}
               onOpenPlugins={() => setMainView('plugins')}
+              onOpenKanban={() => setMainView('kanban')}
               onOpenSettings={() => setMainView('settings')}
             />
           </div>
@@ -71,22 +82,25 @@ export default function App() {
         )}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <Suspense fallback={<DeferredViewFallback />}>
-            {mainView === 'plugins' && (
+            {activeView === 'plugins' && (
               <PluginsPage
                 isSidebarOpen={isOpen}
                 onToggleSidebar={toggle}
                 onOpenSettings={() => setMainView('settings')}
               />
             )}
-            {mainView === 'settings' && (
+            {activeView === 'settings' && (
               <SettingsPage
                 isSidebarOpen={isOpen}
                 onToggleSidebar={toggle}
                 onOpenPlugins={() => setMainView('plugins')}
               />
             )}
-            {mainView === 'chat' && (
+            {activeView === 'chat' && (
               <ChatView isSidebarOpen={isOpen} onToggleSidebar={toggle} />
+            )}
+            {activeView === 'kanban' && (
+              <KanbanPage isSidebarOpen={isOpen} onToggleSidebar={toggle} />
             )}
           </Suspense>
           <TransientHintDialog />

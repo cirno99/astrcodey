@@ -2,6 +2,7 @@ import {
   AGENT_SESSION_STATUSES,
   APPROVAL_DECISIONS,
   BLOCK_STATUSES,
+  KANBAN_CARD_COLUMNS,
   PHASES,
   TOOL_CALL_STATUSES,
   TOOL_OUTPUT_STREAMS,
@@ -17,6 +18,8 @@ import type {
   ConversationSnapshot,
   ConversationState,
   ConversationStreamEnvelope,
+  KanbanBoardResponse,
+  KanbanCard,
   PendingAskUserQuestion,
   PendingAskUserQuestionsResponse,
   PromptAttachmentWire,
@@ -396,6 +399,32 @@ export function decodePendingAskUserQuestionsResponse(
       decodePendingAskUserQuestion
     ),
   }
+}
+
+const decodeKanbanCardColumn = stringEnumDecoder(
+  'kanban card column',
+  KANBAN_CARD_COLUMNS
+)
+
+function decodeKanbanCard(value: unknown): KanbanCard {
+  const object = decodeObject(value, 'kanban card')
+  return {
+    id: requiredString(object, 'id'),
+    title: requiredString(object, 'title'),
+    body: requiredString(object, 'body'),
+    column: decodeKanbanCardColumn(object.column),
+    workingDir: requiredString(object, 'workingDir'),
+    sessionId: optionalString(object, 'sessionId'),
+    attempt: requiredNumber(object, 'attempt'),
+    note: optionalString(object, 'note'),
+    createdAt: requiredString(object, 'createdAt'),
+    updatedAt: requiredString(object, 'updatedAt'),
+  }
+}
+
+export function decodeKanbanBoard(value: unknown): KanbanBoardResponse {
+  const object = decodeObject(value, 'kanban board')
+  return { cards: arrayField(object, 'cards').map(decodeKanbanCard) }
 }
 
 export function decodeConversationStreamEnvelope(

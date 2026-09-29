@@ -6,7 +6,7 @@ license.workspace = true
 description = "First-party bundled extension registration"
 
 [features]
-default = ["agent-tools", "coding", "mcp", "skill", "todo-tool", "mode", "ask-user", "goal", "memory", "channels", "web-tools", "session-commands"]
+default = ["agent-tools", "coding", "mcp", "skill", "todo-tool", "mode", "ask-user", "goal", "memory", "channels", "kanban", "web-tools", "session-commands"]
 agent-tools = ["dep:astrcode-extension-agent-tools"]
 coding = ["dep:astrcode-extension-coding"]
 mcp = ["dep:astrcode-extension-mcp"]
@@ -17,6 +17,7 @@ ask-user = ["dep:astrcode-extension-ask-user"]
 goal = ["dep:astrcode-extension-goal"]
 memory = ["dep:astrcode-extension-memory"]
 channels = ["dep:astrcode-extension-channels"]
+kanban = ["dep:astrcode-extension-kanban"]
 web-tools = ["dep:astrcode-extension-web-tools"]
 session-commands = ["dep:astrcode-extension-session-commands"]
 
@@ -34,6 +35,7 @@ astrcode-extension-ask-user = { path = "../astrcode-extension-ask-user", optiona
 astrcode-extension-goal = { path = "../astrcode-extension-goal", optional = true, default-features = false }
 astrcode-extension-memory = { path = "../astrcode-extension-memory", optional = true, default-features = false }
 astrcode-extension-channels = { path = "../astrcode-extension-channels", optional = true, default-features = false }
+astrcode-extension-kanban = { path = "../astrcode-extension-kanban", optional = true, default-features = false }
 astrcode-extension-web-tools = { path = "../astrcode-extension-web-tools", optional = true, default-features = false }
 astrcode-extension-session-commands = { path = "../astrcode-extension-session-commands", optional = true, default-features = false }
 serde_json = { workspace = true }

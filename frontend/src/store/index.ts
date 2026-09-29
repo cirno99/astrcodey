@@ -85,11 +85,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   ...DEFAULT_SESSION_STATE,
   modelRefreshKey: 0,
   extensions: [],
+  kanbanCards: [],
   pendingAskUserQuestions: {},
   resolvedAskUserCallIds: {},
   pendingAskUserRefreshInFlight: false,
   askUserEventRevision: 0,
   askUserExtensionAvailable: null,
+  kanbanExtensionAvailable: null,
   projectFolderOrder: [],
 
   initServer: async () => {
@@ -443,22 +445,40 @@ export const useAppStore = create<AppState>((set, get) => ({
       )
       const askUserExtensionAvailable =
         askUser !== undefined && askUser.enabled && askUser.loaded
+      const kanban = extensions.find(
+        (extension) => extension.extensionId === 'astrcode-kanban'
+      )
+      const kanbanExtensionAvailable =
+        kanban !== undefined && kanban.enabled && kanban.loaded
       if (!askUserExtensionAvailable) {
         pendingAskRefreshGeneration += 1
         set({
           extensions,
           askUserExtensionAvailable,
+          kanbanExtensionAvailable,
           pendingAskUserQuestions: {},
           resolvedAskUserCallIds: {},
           pendingAskUserRefreshInFlight: false,
         })
         return
       }
-      set({ extensions, askUserExtensionAvailable })
+      set({ extensions, askUserExtensionAvailable, kanbanExtensionAvailable })
     } catch (err) {
       console.error('Failed to refresh extensions:', err)
       set({
         transientHint: err instanceof Error ? err.message : '刷新扩展数据失败',
+      })
+    }
+  },
+
+  refreshKanbanBoard: async () => {
+    try {
+      const board = await api.getKanbanBoard()
+      set({ kanbanCards: board.cards })
+    } catch (err) {
+      console.error('Failed to refresh kanban board:', err)
+      set({
+        transientHint: err instanceof Error ? err.message : '刷新看板失败',
       })
     }
   },
