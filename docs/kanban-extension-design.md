@@ -161,9 +161,13 @@ struct Board { cards: Vec<Card> }
 
 ### 6.6 退化重复守卫（宿主侧）
 
-模型陷入「短时间内大量重复文字行」时，扩展看不到流式输出（`submit_root_turn` 只在 turn 结束后返回），所以守卫做在宿主流式层 `crates/astrcode-session/src/repetition_guard.rs`：最近 40 行非空正文的去重行数 ≤ 16 且平均行长 ≤ 32 字符，连续两个窗口满足即判定退化，中断当前生成并让 turn 以 `TurnError::DegenerateRepetition` 结束。
+模型陷入「短时间内大量重复文字」时，扩展看不到流式输出（`submit_root_turn` 只在 turn 结束后返回），所以守卫做在宿主流式层 `crates/astrcode-session/src/repetition_guard.rs`。
 
-错误文案以 `degenerate repetition detected` 开头（常量定义在 `repetition_guard.rs`，与错误文案的一致性由单测绑定）。扩展按字面量识别——内置插件只能依赖插件系统，无法引用宿主常量。
+判定按**片段**而非整行：换行与中文句末标点总是片段边界，`.` / `!` / `?` 只在后接空白时算句末（避免把 `foo.bar()`、`3.14` 切碎）。最近 40 个片段的去重数 ≤ 16 且平均长度 ≤ 32 字符，连续两个窗口满足即判定退化，中断当前生成并让 turn 以 `TurnError::DegenerateRepetition` 结束。正文与思考各用一个独立窗口（`RepetitionStream::{Text, Thinking}`）——思考里的自我复读通常没有换行，只能靠句末标点切分；两者混进同一个窗口会互相稀释。
+
+开销约束（每个流式增量都会走一遍）：扫描游标只前进不回退，增量只扫新增字节；去重数与总长度在入窗 / 出窗时增量维护，判定本身是 O(1)；单个片段超过 64 KiB 未出现边界即判定为长文输出并重置统计。内存与单次扫描量都不随输出长度增长。
+
+错误文案以 `degenerate repetition detected` 开头（常量定义在 `repetition_guard.rs`，与错误文案的一致性由单测绑定），并带上通道名（`正文` / `思考`）。扩展按字面量识别——内置插件只能依赖插件系统，无法引用宿主常量。
 
 守卫对所有会话生效，不只作用于看板；阈值刻意保守，误杀的代价是一次 turn 失败。
 
