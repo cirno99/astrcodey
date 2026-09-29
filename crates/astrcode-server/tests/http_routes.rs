@@ -2612,3 +2612,79 @@ async fn runtime_with_event_store(
         std::env::temp_dir(),
     ))
 }
+
+/// 根路径必须命中内嵌前端产物（真实产物或占位页都是 HTML）。
+#[tokio::test]
+async fn root_serves_embedded_frontend_index() {
+    let runtime = runtime(Arc::new(immediate_llm())).await;
+    let app = router(runtime).unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok()),
+        Some("text/html")
+    );
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert!(
+        body.starts_with(b"<!doctype html"),
+        "unexpected index body: {}",
+        String::from_utf8_lossy(&body)
+    );
+}
+
+/// 内嵌前端不得吞掉 `/api` 下的未知路径：必须仍是 JSON 404，前端据此提示接口不存在。
+#[tokio::test]
+async fn unknown_api_path_returns_json_404_instead_of_frontend() {
+    let runtime = runtime(Arc::new(immediate_llm())).await;
+    let app = router(runtime).unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/api/definitely-not-a-route")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let envelope: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(envelope["code"], "extension_route_not_found");
+}
+
+/// 未内嵌的资源路径不能回退成 HTML，否则前端会拿到 200 的空壳页面。
+#[tokio::test]
+async fn missing_frontend_asset_returns_404() {
+    let runtime = runtime(Arc::new(immediate_llm())).await;
+    let app = router(runtime).unwrap();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method(Method::GET)
+                .uri("/assets/definitely-missing.js")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}

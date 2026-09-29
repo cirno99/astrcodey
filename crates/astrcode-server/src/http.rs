@@ -19,6 +19,7 @@ mod conversation_timeline;
 mod projection;
 mod routes;
 mod server;
+mod static_assets;
 mod stream;
 
 pub use server::{HttpServerError, router, run_http_server};

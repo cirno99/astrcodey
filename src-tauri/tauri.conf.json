@@ -11,7 +11,7 @@
       "cwd": "../frontend"
     },
     "beforeBuildCommand": {
-      "script": "npm run prepare:sidecar -- --release && npm run build",
+      "script": "npm run build && npm run prepare:sidecar -- --release",
       "cwd": "../frontend"
     }
   },

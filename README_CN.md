@@ -504,7 +504,8 @@ Identity → System → Task Guidelines → Communication → Environment
 | **Server** | `cargo run -- server [--addr 0.0.0.0:3847]` | HTTP/SSE 服务器，支持 JSON-RPC、会话管理、实时事件流 |
 | **ACP** | `cargo run -- acp` | ACP stdio 适配器，用于 IDE/编辑器集成 |
 | **Eval** | `cargo run --features dev-mode -- eval` | 运行评测基准（需要 `dev-mode` feature） |
-| **Web** | `cd frontend && npm run dev` | 浏览器聊天界面，通过 SSE 连接后端 |
+| **Web** | `cargo run -- server` 后打开 `http://127.0.0.1:3847` | 浏览器聊天界面；前端产物在编译期内嵌进二进制，无需单独部署 |
+| **Web (dev)** | `cd frontend && npm run dev` | Vite 开发服务器，支持热更新，通过 SSE 连接后端 |
 | **Desktop** | `cd frontend && npm run tauri:dev` | Tauri 桌面应用（自动启动 server 作为 sidecar） |
 
 ### TUI 参考

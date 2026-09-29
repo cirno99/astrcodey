@@ -207,6 +207,12 @@ pub async fn run_http_server(
     let local_addr = listener.local_addr()?;
     let local_port = local_addr.port();
     write_run_info(local_port);
+    if super::static_assets::is_placeholder() {
+        tracing::warn!(
+            "embedded frontend is a placeholder; run `cd frontend && npm run build` and rebuild \
+             astrcode-server to serve the web UI"
+        );
+    }
     tracing::info!("HTTP server ready at http://{local_addr}");
     let result = axum::serve(listener, app)
         .with_graceful_shutdown(async move {

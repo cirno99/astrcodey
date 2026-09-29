@@ -504,7 +504,8 @@ Stable sections (Identity, System, Task Guidelines) come first to leverage promp
 | **Server** | `cargo run -- server [--addr 0.0.0.0:3847]` | HTTP/SSE server with JSON-RPC, session management, real-time event streaming |
 | **ACP** | `cargo run -- acp` | ACP stdio adapter for IDE/editor integration |
 | **Eval** | `cargo run --features dev-mode -- eval` | Run evaluation benchmarks (requires `dev-mode` feature) |
-| **Web** | `cd frontend && npm run dev` | Browser-based chat interface connected to the server via SSE |
+| **Web** | `cargo run -- server`, then open `http://127.0.0.1:3847` | Browser chat interface; frontend assets are embedded at compile time |
+| **Web (dev)** | `cd frontend && npm run dev` | Vite dev server with hot reload, connected to the server via SSE |
 | **Desktop** | `cd frontend && npm run tauri:dev` | Tauri desktop app (auto-launches server as sidecar) |
 
 ### TUI Reference
