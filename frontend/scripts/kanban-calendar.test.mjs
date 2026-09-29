@@ -18,6 +18,12 @@ import {
   resolveExpandedSlot,
   sameDropTarget,
 } from '../../target/frontend-kanban-calendar/columns.js'
+import {
+  UNSPECIFIED_PROJECT_DIR,
+  UNSPECIFIED_PROJECT_LABEL,
+  groupCardsByProject,
+  projectNameFromDir,
+} from '../../target/frontend-kanban-calendar/projectGroups.js'
 
 // ── 日键换算 ──
 
@@ -274,3 +280,57 @@ for (const column of [
 ]) {
   assert.equal(isEditableColumn(column), false, `${column} 不该可编辑`)
 }
+
+// ── 按项目路径分组 ──
+
+// 「待办」与「已完成」是仅有的两个日历槽位；槽位内同项目的卡片必须相邻，
+// 因此分组键取 trim 后的完整路径，而不是只显示用的项目名。
+const grouped = groupCardsByProject([
+  { id: 'a1', workingDir: '/repo/alpha' },
+  { id: 'b1', workingDir: '/repo/beta' },
+  { id: 'a2', workingDir: '/repo/alpha' },
+  { id: 'loose', workingDir: '' },
+  { id: 'a3', workingDir: ' /repo/alpha ' },
+])
+
+// 组间顺序是首次出现顺序：后端按插入顺序返回卡片，按字典序重排会让组头在轮询时跳位置。
+assert.deepEqual(
+  grouped.map((group) => group.workingDir),
+  ['/repo/alpha', '/repo/beta', UNSPECIFIED_PROJECT_DIR]
+)
+assert.deepEqual(
+  grouped.map((group) => group.name),
+  ['alpha', 'beta', UNSPECIFIED_PROJECT_LABEL]
+)
+
+// 组内保持传入顺序，且末尾空格的路径与不带空格的路径必须归到同一组。
+assert.deepEqual(
+  grouped[0].cards.map((card) => card.id),
+  ['a1', 'a2', 'a3']
+)
+
+// 没有工作目录的卡片自成一组，而不是被丢掉。
+assert.deepEqual(
+  grouped[2].cards.map((card) => card.id),
+  ['loose']
+)
+
+// 同名的不同项目不能并组：组键是完整路径，显示名才取最后一段。
+const sameBasename = groupCardsByProject([
+  { id: 'x1', workingDir: '/repo/alpha' },
+  { id: 'x2', workingDir: '/other/alpha' },
+])
+assert.equal(sameBasename.length, 2)
+
+// 空输入不产生空组头。
+assert.deepEqual(groupCardsByProject([]), [])
+
+// 项目名取路径最后一段；Windows 分隔符、尾斜杠都要处理。
+assert.equal(projectNameFromDir('/repo/alpha'), 'alpha')
+assert.equal(projectNameFromDir('C:\\repo\\beta'), 'beta')
+assert.equal(projectNameFromDir('/repo/alpha/'), 'alpha')
+assert.equal(projectNameFromDir('  /repo/alpha  '), 'alpha')
+
+// 路径只有分隔符或为空时回落原文，不能返回空名字。
+assert.equal(projectNameFromDir(''), '')
+assert.equal(projectNameFromDir('/'), '/')

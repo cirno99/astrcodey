@@ -61,6 +61,9 @@ interface CalendarBucketColumnProps {
  * 这时两个标题仍然各自是拖拽落点，否则空白的日子就没法接卡片。
  *
  * 有卡片时两个菜单项默认同时展开、各占一半高度，用户点开某一项才切成手风琴。
+ *
+ * 「待办」与「已完成」是看板上仅有的两个日历槽位，槽位内按项目路径分组：
+ * 同一项目的卡片相邻，组头带项目名与数量。
  */
 export function CalendarBucketColumn({
   bucket,
@@ -174,6 +177,7 @@ export function CalendarBucketColumn({
             <KanbanCardList
               cards={cardsBySlot[slot]}
               handlers={handlers}
+              groupByProject
               emptyHint="暂无卡片"
             />
           ) : (
