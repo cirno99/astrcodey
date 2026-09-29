@@ -91,6 +91,7 @@ export default function Sidebar({
   const deleteSessions = useAppStore((s) => s.deleteSessions)
   const deleteProject = useAppStore((s) => s.deleteProject)
   const forkSession = useAppStore((s) => s.forkSession)
+  const refreshSessions = useAppStore((s) => s.refreshSessions)
 
   const [showNewProject, setShowNewProject] = useState(false)
   const [contextMenu, setContextMenu] = useState<SidebarContextMenu | null>(
@@ -105,6 +106,7 @@ export default function Sidebar({
   const [collapsedProjectDirs, setCollapsedProjectDirs] = useState(
     readCollapsedProjectDirs
   )
+  const [refreshingSessions, setRefreshingSessions] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const bridge = useMemo(() => getHostBridge(), [])
@@ -179,6 +181,15 @@ export default function Sidebar({
     setSelectedSessionIds(new Set())
     setSelectMode(true)
   }, [])
+
+  const handleRefreshSessions = useCallback(async () => {
+    setRefreshingSessions(true)
+    try {
+      await refreshSessions()
+    } finally {
+      setRefreshingSessions(false)
+    }
+  }, [refreshSessions])
 
   const toggleSessionSelected = useCallback((sessionId: string) => {
     setSelectedSessionIds((current) => {
@@ -459,15 +470,32 @@ export default function Sidebar({
             <span className="text-[12px] font-medium text-text-muted">
               会话
             </span>
-            {sessions.length > 0 && (
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
-                className="shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-text-primary"
-                onClick={enterSelectMode}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void handleRefreshSessions()}
+                disabled={refreshingSessions}
+                aria-label="刷新会话列表"
+                title="刷新会话列表"
               >
-                选择
+                <Icon
+                  name="refresh"
+                  size={12}
+                  className={refreshingSessions ? 'animate-spin' : undefined}
+                />
+                刷新
               </button>
-            )}
+              {sessions.length > 0 && (
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-text-primary"
+                  onClick={enterSelectMode}
+                >
+                  选择
+                </button>
+              )}
+            </div>
           </div>
         )}
         <div className="space-y-1">
