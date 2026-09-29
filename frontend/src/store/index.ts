@@ -1,17 +1,12 @@
 import { create } from 'zustand'
 import * as api from '../services/api'
-import { resolveHostBridge } from '../lib/hostBridge'
 import type { ConversationDelta } from '../services/types'
 import {
   applyDeltaToState,
   mergePendingAskUserSnapshot,
 } from './delta/applyDelta'
 import { isRegisteredSlashCommand } from '../lib/keybindings'
-import {
-  commandNoteBlock,
-  isCompactCommand,
-  withTimeout,
-} from './delta/blockHelpers'
+import { commandNoteBlock, isCompactCommand } from './delta/blockHelpers'
 import { startSessionStream } from './stream'
 import {
   PendingAskUserPoller,
@@ -78,7 +73,6 @@ function resetSessionView(): Partial<AppState> {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  serverPort: null,
   connectionStatus: 'disconnected',
   connectionError: null,
   sessions: [],
@@ -95,32 +89,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   projectFolderOrder: [],
 
   initServer: async () => {
-    set({ connectionStatus: 'connecting', connectionError: null })
-
-    const bridge = await resolveHostBridge()
-
-    if (bridge.isDesktopHost) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core')
-        const result = await withTimeout(
-          invoke<{ port: number }>('start_server'),
-          15_000,
-          '启动 AstrCode 服务超时，请关闭残留 astrcode-http-server 进程后重试'
-        )
-        api.setServerPort(result.port)
-        set({ serverPort: result.port })
-      } catch (err) {
-        set({
-          connectionStatus: 'error',
-          connectionError: err instanceof Error ? err.message : String(err),
-        })
-        return
-      }
-    } else {
-      api.initBaseUrl()
-    }
-
-    set({ connectionStatus: 'connected' })
+    set({ connectionStatus: 'connected', connectionError: null })
     pendingAskUserPoller?.stop()
     pendingAskUserPoller = new PendingAskUserPoller({
       readState: get,

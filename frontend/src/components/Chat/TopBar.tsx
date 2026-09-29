@@ -31,6 +31,8 @@ const STREAM_STATUS_LABELS: Partial<Record<SessionStreamStatus, string>> = {
 interface TopBarProps {
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  /** 从看板跳进会话时提供回退入口；其余入口不传，顶栏就没有后退按钮。 */
+  onBack?: () => void
 }
 
 function statusDotClass(status: AgentSessionStatus): string {
@@ -47,6 +49,7 @@ function statusDotClass(status: AgentSessionStatus): string {
 export default function TopBar({
   isSidebarOpen,
   onToggleSidebar,
+  onBack,
 }: TopBarProps) {
   const phase = useAppStore((state) =>
     effectiveConversationPhase(state.control, state.compactSubmitting)
@@ -59,6 +62,9 @@ export default function TopBar({
 
   const [subsessionMenuOpen, setSubsessionMenuOpen] = useState(false)
 
+  // 左侧按钮是绝对定位的，中间内容按按钮个数留出左内边距才不会叠上去。
+  const leftActions = (onBack ? 1 : 0) + (isSidebarOpen ? 0 : 1)
+
   return (
     <header
       className={cn(
@@ -67,21 +73,32 @@ export default function TopBar({
       )}
     >
       <div className="relative flex min-h-[48px] items-center px-[var(--layout-page-padding-x)] py-1.5">
-        {!isSidebarOpen && (
-          <div className="absolute left-[var(--layout-page-padding-x)] top-1/2 -translate-y-1/2">
-            <IconButton
-              icon="sidebar"
-              label="展开侧边栏"
-              onClick={onToggleSidebar}
-              className="-ml-1"
-            />
+        {leftActions > 0 && (
+          <div className="absolute left-[var(--layout-page-padding-x)] top-1/2 flex -translate-y-1/2 items-center gap-1">
+            {onBack && (
+              <IconButton
+                icon="arrow-left"
+                label="返回看板"
+                onClick={onBack}
+                className="-ml-1"
+              />
+            )}
+            {!isSidebarOpen && (
+              <IconButton
+                icon="sidebar"
+                label="展开侧边栏"
+                onClick={onToggleSidebar}
+                className={onBack ? undefined : '-ml-1'}
+              />
+            )}
           </div>
         )}
 
         <div
           className={cn(
             'mx-auto flex w-full max-w-[var(--layout-content-max-width)] min-w-0 items-center gap-1.5',
-            !isSidebarOpen && 'pl-11'
+            leftActions === 1 && 'pl-11',
+            leftActions === 2 && 'pl-[4.5rem]'
           )}
         >
           <span

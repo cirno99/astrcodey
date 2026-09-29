@@ -3,7 +3,7 @@ name = "astrcode-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "CLI entry point: tui, exec, and server commands"
+description = "CLI entry point: exec, server, and ACP commands"
 default-run = "astrcode"
 
 [[bin]]
@@ -25,22 +25,8 @@ tokio = { workspace = true, features = ["sync", "time", "rt-multi-thread", "macr
 serde_json = { workspace = true }
 async-trait = { workspace = true }
 clap = { workspace = true }
-ratatui = { workspace = true }
-ratatui-crossterm = { workspace = true }
-crossterm = { workspace = true }
-unicode-width = { workspace = true }
-tokio-stream = { workspace = true }
-futures-util = { workspace = true }
-chrono = { workspace = true }
 tracing = { workspace = true }
-parking_lot = { workspace = true }
 thiserror = { workspace = true }
-arboard = { workspace = true }
-image = { workspace = true }
-base64 = { workspace = true }
-
-[target.'cfg(unix)'.dependencies]
-libc = { workspace = true }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = { workspace = true }

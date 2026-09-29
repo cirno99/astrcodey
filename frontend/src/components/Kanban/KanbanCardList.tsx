@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { cn } from '../../lib/utils'
-import { IconButton } from '../ui'
+import { Icon, IconButton } from '../ui'
 import type { KanbanCard } from '../../services/types'
+import { groupHeader } from './boardStyles'
 import { KanbanCardItem, type KanbanCardHandlers } from './KanbanCardItem'
 import { groupCardsByProject, type ProjectCardGroup } from './projectGroups'
 
@@ -16,10 +17,13 @@ interface KanbanCardListProps {
 }
 
 /**
- * 分组里的一组卡片：组头带项目名、数量与整组删除入口。
+ * 分组里的一组卡片：组头带项目名、数量、整组删除入口与展开开关。
  *
  * 二次确认内联在组头下方而不是用弹窗：日历列本身就很窄，弹窗会遮住用户正在看的其它组。
  * 确认文案里带上张数——整组删除会连带删掉「已完成」卡片绑定的会话，误触不可恢复。
+ *
+ * 收起状态只活在这个组自己的实例上，因此按列独立；看板每 5 秒轮询只换卡片对象，
+ * 组件身份不变，用户收起的组不会被轮询弹开。默认展开。
  */
 function ProjectCardGroupSection({
   group,
@@ -29,22 +33,34 @@ function ProjectCardGroupSection({
   handlers: KanbanCardHandlers
 }) {
   const [confirming, setConfirming] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-1 px-0.5 text-[11px] text-text-muted">
-        <span
-          className="min-w-0 truncate font-medium text-text-secondary"
+    <div className="group/section space-y-2">
+      <div className={groupHeader}>
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent/60" />
+        <button
+          type="button"
+          aria-expanded={!collapsed}
+          className="flex min-w-0 flex-1 items-center gap-1 text-left"
           title={group.workingDir}
+          onClick={() => setCollapsed((current) => !current)}
         >
-          {group.name}
-        </span>
-        <span className="ml-auto shrink-0">{group.cards.length}</span>
+          <Icon
+            name={collapsed ? 'chevron-right' : 'chevron-down'}
+            size={12}
+            className="shrink-0 opacity-70"
+          />
+          <span className="min-w-0 truncate font-medium text-text-secondary">
+            {group.name}
+          </span>
+        </button>
+        <span className="shrink-0 tabular-nums">{group.cards.length}</span>
         {!confirming && (
           <IconButton
             icon="trash"
             size={12}
-            className="p-0.5"
+            className="shrink-0 p-0.5 opacity-0 transition-opacity duration-150 group-hover/section:opacity-100 focus-visible:opacity-100 max-md:opacity-100"
             label={`删除 ${group.name} 的全部卡片`}
             disabled={handlers.busy}
             onClick={() => setConfirming(true)}
@@ -52,7 +68,7 @@ function ProjectCardGroupSection({
         )}
       </div>
       {confirming && (
-        <div className="flex items-center gap-2 rounded-md border border-danger/20 bg-danger-soft px-2 py-1 text-[11px]">
+        <div className="flex items-center gap-2 rounded-md border border-danger/20 bg-danger-soft px-2 py-1.5 text-[11px]">
           <span className="min-w-0 truncate text-danger">
             删除这 {group.cards.length} 张卡片？
           </span>
@@ -77,9 +93,10 @@ function ProjectCardGroupSection({
           </div>
         </div>
       )}
-      {group.cards.map((card) => (
-        <KanbanCardItem key={card.id} card={card} handlers={handlers} />
-      ))}
+      {!collapsed &&
+        group.cards.map((card) => (
+          <KanbanCardItem key={card.id} card={card} handlers={handlers} />
+        ))}
     </div>
   )
 }
@@ -97,7 +114,7 @@ export function KanbanCardList({
     return (
       <div
         className={cn(
-          'rounded-md border border-dashed border-border px-3 py-6 text-center text-[12px] text-text-muted',
+          'rounded-lg border border-dashed border-border px-3 py-4 text-center text-[11px] text-text-muted',
           className
         )}
       >

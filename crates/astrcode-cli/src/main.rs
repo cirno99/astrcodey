@@ -1,14 +1,12 @@
 //! astrcode CLI —— multitool 入口点。
 //!
 //! 单个 `astrcode` 二进制包含所有运行模式：
-//! - `tui`：交互式终端（默认行为）
 //! - `exec`：无头单次执行
 //! - `server`：HTTP/SSE 后端服务器
 //! - `version`：版本信息
 
 mod exec;
 mod transport;
-mod tui;
 
 #[cfg(feature = "dev-mode")]
 use std::path::PathBuf;
@@ -121,25 +119,21 @@ async fn run_swe_harness(
 
 /// CLI 顶层参数结构。
 #[derive(Parser)]
-#[command(name = "astrcode", version, about = "AI coding agent platform")]
+#[command(
+    name = "astrcode",
+    version,
+    about = "AI coding agent platform",
+    arg_required_else_help = true
+)]
 struct Cli {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 /// 支持的子命令枚举。
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
 enum Commands {
-    /// 启动交互式终端 UI（默认）
-    Tui {
-        /// 工具审批：跳过 Ask，自动放行（覆盖 config 中的 approvalMode）
-        #[arg(long)]
-        yolo: bool,
-        /// 工具审批：敏感操作需确认（覆盖 config）
-        #[arg(long)]
-        manual: bool,
-    },
     /// 执行单次提示（无头模式）
     Exec {
         /// 提示文本；省略或传 `-` 时从 stdin 读取
@@ -302,31 +296,9 @@ enum EvalOutputFormat {
 async fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    // TUI 模式禁用 stderr 日志，避免破坏终端 UI
-    let _guard = match &cli.command {
-        None | Some(Commands::Tui { .. }) => astrcode_log::init_with(astrcode_log::LogOptions {
-            stderr_enabled: false,
-            ..astrcode_log::LogOptions::default()
-        }),
-        _ => astrcode_log::init(),
-    };
+    let _guard = astrcode_log::init();
 
-    let command = cli.command.unwrap_or(Commands::Tui {
-        yolo: false,
-        manual: false,
-    });
-
-    match command {
-        Commands::Tui { yolo, manual } => {
-            if yolo && manual {
-                eprintln!("error: --yolo and --manual are mutually exclusive");
-                return ExitCode::from(2);
-            }
-            if let Err(e) = tui::run(cli_approval_bootstrap_opts(yolo, manual)).await {
-                eprintln!("TUI error: {}", e);
-                return ExitCode::from(1);
-            }
-        },
+    match cli.command {
         Commands::Exec {
             prompt,
             session,

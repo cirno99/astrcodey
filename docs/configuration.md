@@ -119,7 +119,7 @@ provider = "duckduckgo"
 | `agentMaxDepth` | `2` | 子 Agent 最大嵌套深度（root=0） |
 | `agentToolMaxParallelCalls` | `5` | 单轮并行工具调用上限 |
 | `allowApiKeyShellCommand` | `false` | 是否允许 `apiKey` 使用 `!command` 从 shell 读取密钥 |
-| `approvalMode` | `"manual"` | **全局**审批模式：`"manual"` 需确认；`"yolo"` 跳过 Ask。对所有 session 生效（每轮 turn 从有效配置读取，非「每个 session 单独记忆」）。Web 设置页保存后写入本字段。CLI/TUI 进程内启动时，若未设置此项则**默认 yolo**；`astrcode tui --manual` / `--yolo` 可强制覆盖。HTTP `server` 子命令未设置时仍为 `manual`。 |
+| `approvalMode` | `"manual"` | **全局**审批模式：`"manual"` 需确认；`"yolo"` 跳过 Ask。对所有 session 生效（每轮 turn 从有效配置读取，非「每个 session 单独记忆」）。Web 设置页保存后写入本字段。CLI 进程内启动时（`exec` 子命令），若未设置此项则**默认 yolo**；`astrcode exec --manual` / `--yolo` 可强制覆盖。HTTP `server` 子命令未设置时仍为 `manual`。 |
 | `extensionStates` | `{}` | 扩展启停，见 §7 |
 
 ---

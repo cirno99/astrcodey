@@ -1,10 +1,9 @@
-import { getHostBridge } from '../lib/hostBridge'
-import { isTauriEnvironment } from '../lib/tauri'
 import {
   decodeConversationItemsPage,
   decodeConversationSnapshot,
   decodeConversationState,
   decodeKanbanBoard,
+  decodeKanbanDirectoryListing,
   decodePendingAskUserQuestionsResponse,
 } from './protocol'
 import type {
@@ -37,39 +36,12 @@ import type {
   ConfigView,
   CurrentModelInfo,
   KanbanBoardResponse,
+  KanbanDirectoryListing,
   ModelTestResult,
   ProviderCatalogView,
   RemoveProviderPresetResponse,
   SlashCommandListResponse,
 } from './types'
-
-let baseUrl = ''
-
-let _tauriFetch: typeof window.fetch | null = null
-
-async function resolveFetch(): Promise<typeof window.fetch> {
-  if (isTauriEnvironment() && !_tauriFetch) {
-    const { fetch } = await import('@tauri-apps/plugin-http')
-    _tauriFetch = fetch as unknown as typeof window.fetch
-  }
-  return _tauriFetch ?? window.fetch
-}
-
-export function setServerPort(port: number): void {
-  baseUrl = `http://127.0.0.1:${port}`
-}
-
-export function getBaseUrl(): string {
-  return baseUrl
-}
-
-export function initBaseUrl(): void {
-  const origin = getHostBridge().getServerOrigin()
-  if (origin) {
-    baseUrl = origin
-  }
-}
-
 async function formatRequestError(
   response: Response,
   body: string
@@ -92,11 +64,10 @@ async function formatRequestError(
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const fetchFn = await resolveFetch()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
-  const response = await fetchFn(`${baseUrl}${path}`, {
+  const response = await window.fetch(path, {
     ...init,
     headers: {
       ...headers,
@@ -200,7 +171,7 @@ export async function rejectAskUserQuestion(
 /**
  * 打开 conversation SSE。
  *
- * Tauri plugin-http 会缓冲响应体直到连接结束，因此流式连接必须使用 WebView fetch。
+ * 流式连接必须使用浏览器原生 fetch 逐步读取响应体。
  * URL、鉴权和平台差异仍由 service 边界统一管理，store 不接触这些细节。
  */
 export function openConversationStream(
@@ -209,7 +180,7 @@ export function openConversationStream(
   signal: AbortSignal
 ): Promise<Response> {
   const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''
-  const url = `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/stream${params}`
+  const url = `/api/sessions/${encodeURIComponent(sessionId)}/stream${params}`
   return window.fetch(url, {
     headers: {
       Accept: 'text/event-stream',
@@ -323,8 +294,7 @@ export async function deleteProject(
 
 export async function healthCheck(): Promise<boolean> {
   try {
-    const fetchFn = await resolveFetch()
-    const response = await fetchFn(`${baseUrl}/api/sessions`, {
+    const response = await window.fetch('/api/sessions', {
       headers: { 'Content-Type': 'application/json' },
     })
     return response.ok
@@ -483,6 +453,22 @@ export async function deleteKanbanCard(cardId: string): Promise<void> {
   })
 }
 
+/**
+ * 列举本机某个目录下的一层子目录，供新建卡片的文件夹选择器使用。
+ *
+ * 路径为空时由扩展回落到它自己的当前目录。
+ */
+export async function listKanbanDirectories(
+  path: string
+): Promise<KanbanDirectoryListing> {
+  return decodeKanbanDirectoryListing(
+    await request<unknown>(kanbanPath('/directories'), {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    })
+  )
+}
+
 export type ToolGateApprovalDecision = ToolApprovalRequest['decision']
 
 export async function submitToolGateApproval(
@@ -491,15 +477,16 @@ export async function submitToolGateApproval(
   decision: ToolGateApprovalDecision
 ): Promise<void> {
   const body: ToolApprovalRequest = { callId, decision }
-  const response = await (
-    await resolveFetch()
-  )(`${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/approve`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  const response = await window.fetch(
+    `/api/sessions/${encodeURIComponent(sessionId)}/approve`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
+  )
 
   if (!response.ok) {
     const body = await response.text()

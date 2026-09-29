@@ -7,12 +7,11 @@
 
 | Interface | Preview |
 |-----------|---------|
-| **CLI (TUI)** | <img width="1210" height="924" alt="astrcode TUI screenshot" src="https://github.com/user-attachments/assets/55259723-9bd7-4a1a-a74e-1e799ece2eed" /> |
-| **Web / Desktop** | <img width="1197" height="805" alt="image" src="https://github.com/user-attachments/assets/5ee17441-e478-476e-b8f5-f426e1ff1867" /> |
+| **Web UI** | <img width="1197" height="805" alt="image" src="https://github.com/user-attachments/assets/5ee17441-e478-476e-b8f5-f426e1ff1867" /> |
 
 A Rust-built AI coding agent platform.
 
-AstrCode is a full-stack AI coding assistant with a Rust workspace and a React + TypeScript frontend. It features an agent loop with tool execution, a streaming SSE-based multi-provider LLM layer (Anthropic and OpenAI-compatible providers), typed authoring APIs for bundled and disk IPC subprocess extensions, background pre-warm, health checks, and a startup event channel, a persistent MCP process pool (reusing long-lived connections across turns), built-in web search and URL fetch tools, context window management with auto-compaction, an eval framework for automated benchmarking, and multiple interfaces: a terminal TUI, Web frontend, Tauri desktop app, HTTP/SSE API, and ACP (Agent Client Protocol) adapter.
+AstrCode is a full-stack AI coding assistant with a Rust workspace and a React + TypeScript frontend. It features an agent loop with tool execution, a streaming SSE-based multi-provider LLM layer (Anthropic and OpenAI-compatible providers), typed authoring APIs for bundled and disk IPC subprocess extensions, background pre-warm, health checks, and a startup event channel, a persistent MCP process pool (reusing long-lived connections across turns), built-in web search and URL fetch tools, context window management with auto-compaction, an eval framework for automated benchmarking, and multiple interfaces: a Web frontend, HTTP/SSE API, and ACP (Agent Client Protocol) adapter.
 
 ## Table of Contents
 
@@ -252,10 +251,7 @@ EOF
 # 3. Set API key environment variable
 export OPENAI_API_KEY="your-api-key-here"
 
-# 4. Run interactive terminal UI
-cargo run -- tui
-
-# Headless single-shot execution
+# 4. Headless single-shot execution
 cargo run -- exec "explain the agent loop architecture"
 
 # HTTP/SSE server
@@ -263,9 +259,6 @@ cargo run -- server
 
 # Web frontend (dev server)
 cd frontend && npm ci && npm run dev
-
-# Tauri desktop app (dev mode)
-cd frontend && npm ci && npm run tauri:dev
 
 # Eval framework (requires dev-mode feature)
 cargo run --features dev-mode -- eval
@@ -288,16 +281,16 @@ For detailed configuration documentation, see [Configuration Guide](docs/configu
 ## Architecture
 
 ```
-          ┌──────────┐  ┌──────────────────────┐  ┌───────────┐
-          │   TUI    │  │ Web / Tauri Frontend  │  │ ACP Client│
-          │ (ratatui)│  │ React 19 + TypeScript │  │  (stdio)  │
-          └────┬─────┘  └────────┬─────────────┘  └─────┬─────┘
-               │                  │ SSE / JSON-RPC       │ ACP JSON-RPC
-               │    stdio         │                      │ over stdio
-               └────────┬────────┘──────────────────────┘
-                   ┌─────┴──────┐
-                   │astrcode-cli│  TUI / exec / server launcher
-                   └─────┬──────┘
+          ┌──────────────────────┐  ┌───────────┐
+          │     Web Frontend     │  │ ACP Client│
+          │ React 19 + TypeScript│  │  (stdio)  │
+          └───────────┬──────────┘  └─────┬─────┘
+                      │ SSE / JSON-RPC    │ ACP JSON-RPC
+                      │                   │ over stdio
+                      └─────────┬─────────┘
+                          ┌─────┴──────┐
+                          │astrcode-cli│  exec / server launcher
+                          └─────┬──────┘
                          │
                    ┌─────┴──────┐
                    │astrcode-   │  Session management, JSON-RPC + HTTP handler
@@ -336,7 +329,7 @@ For detailed configuration documentation, see [Configuration Guide](docs/configu
 
 ## Crates
 
-The Cargo workspace under [`crates/`](crates/) contains **28 crates**, plus [`src-tauri/`](src-tauri/) as the desktop shell (**29 workspace members** total). Crates are grouped by architectural layer (details in [Architecture](docs/architecture.md)).
+The Cargo workspace under [`crates/`](crates/) contains **31 crates**. Crates are grouped by architectural layer (details in [Architecture](docs/architecture.md)).
 
 ### Layer 0: Foundation Contracts
 
@@ -392,8 +385,7 @@ The Cargo workspace under [`crates/`](crates/) contains **28 crates**, plus [`sr
 
 | Crate | Description |
 |---|---|
-| [`astrcode-cli`](crates/astrcode-cli) | CLI entry: TUI (ratatui), headless exec, and server launcher |
-| [`src-tauri/`](src-tauri) | Tauri v2 desktop shell: sidecar management, single-instance coordination, and native dialogs |
+| [`astrcode-cli`](crates/astrcode-cli) | CLI entry: headless exec, server, and ACP launchers |
 
 ### Layer 6: Evaluation
 
@@ -499,43 +491,12 @@ Stable sections (Identity, System, Task Guidelines) come first to leverage promp
 
 | Mode | Command | Description |
 |---|---|---|
-| **TUI** | `cargo run -- tui` | Interactive terminal UI with message history, tool display, slash commands, status bar |
 | **Exec** | `cargo run -- exec "prompt"` | Headless single-shot execution, supports `--jsonl`|
 | **Server** | `cargo run -- server [--addr 0.0.0.0:3847]` | HTTP/SSE server with JSON-RPC, session management, real-time event streaming |
 | **ACP** | `cargo run -- acp` | ACP stdio adapter for IDE/editor integration |
 | **Eval** | `cargo run --features dev-mode -- eval` | Run evaluation benchmarks (requires `dev-mode` feature) |
 | **Web** | `cargo run -- server`, then open `http://127.0.0.1:3847` | Browser chat interface; frontend assets are embedded at compile time |
 | **Web (dev)** | `cd frontend && npm run dev` | Vite dev server with hot reload, connected to the server via SSE |
-| **Desktop** | `cd frontend && npm run tauri:dev` | Tauri desktop app (auto-launches server as sidecar) |
-
-### TUI Reference
-
-**Keyboard Shortcuts:**
-
-| Key | Action |
-|---|---|
-| `Enter` | Submit prompt / accept slash command selection |
-| `Shift+Enter` / `Alt+Enter` | Insert newline |
-| `Esc` | Close slash palette / stop streaming turn |
-| `Tab` | Complete slash command selection |
-| `Shift+Tab` | Trigger extension-registered keybinding |
-| `Ctrl+A` / `Ctrl+E` | Move to start / end of line |
-| `Ctrl+U` / `Ctrl+K` | Delete before / after cursor |
-| `Ctrl+W` | Delete previous word |
-| `Ctrl+C` | Quit (with confirmation) |
-
-**Slash Commands:**
-
-| Command | Description |
-|---|---|
-| `/new` | Create a fresh session |
-| `/resume <id>` or `/r <id>` | Resume a previous session |
-| `/sessions` or `/ls` | Open session picker |
-| `/compact` | Compact the current session context |
-| `/help` or `/?` | Show command help |
-| `/quit` or `/q` | Exit astrcode |
-
-Extensions can register additional slash commands and keybindings at runtime.
 
 ## Further Reading
 
@@ -567,7 +528,6 @@ This project drew inspiration and design patterns from several open-source proje
 
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — tool execution pipeline, system prompt design, compact design
 - **[OpenCode](https://github.com/anomalyco/opencode)** — the frontend-backend separation (HTTP/SSE + JSON-RPC) references OpenCode's architecture.
-- **[Codex CLI](https://github.com/openai/codex)** — TUI layout and terminal UI design borrow from Codex's approach to rendering agent interactions in the terminal.
 
 ## License
 

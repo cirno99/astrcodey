@@ -71,7 +71,7 @@ git log "${LAST_TAG}..origin/main" --pretty=format:'%s (%h)' --no-merges
 ```bash
 cargo fmt --all -- --check
 python3 scripts/check-deps.py
-cargo check --workspace --all-features --exclude astrcode-desktop
+cargo check --workspace --all-features
 bash -n scripts/bump-release-version.sh scripts/prepare-npm-packages.sh
 git diff --check
 ```
@@ -124,14 +124,14 @@ git switch -c release/v${VERSION}
 bash scripts/bump-release-version.sh "$VERSION"
 ```
 
-脚本负责同步 `Cargo.toml`、lockfile、Tauri、frontend、npm 主包与 s5r fixture 的版本。
+脚本负责同步 `Cargo.toml`、lockfile、frontend、npm 主包与 s5r fixture 的版本。
 
 3. 验证：
 
 ```bash
 cargo fmt --all -- --check
 python3 scripts/check-deps.py
-cargo check --workspace --all-features --exclude astrcode-desktop
+cargo check --workspace --all-features
 bash -n scripts/bump-release-version.sh scripts/prepare-npm-packages.sh
 git diff --check
 ```
@@ -153,7 +153,6 @@ gh pr create --base main --head release/v${VERSION} \
 git switch main
 git pull --ff-only origin main
 grep -q "^version = \"${VERSION}\"" Cargo.toml
-grep -q "\"version\": \"${VERSION}\"" src-tauri/tauri.conf.json
 grep -q "\"version\": \"${VERSION}\"" frontend/package.json
 grep -q "\"version\": \"${VERSION}\"" npm/astrcode/package.json
 git tag -a "v${VERSION}" -m "v${VERSION}"
@@ -177,7 +176,7 @@ git pull --ff-only origin main
 bash scripts/bump-release-version.sh "$VERSION"
 cargo fmt --all -- --check
 python3 scripts/check-deps.py
-cargo check --workspace --all-features --exclude astrcode-desktop
+cargo check --workspace --all-features
 git diff --check
 git add -A
 git commit -m "chore: bump version to ${VERSION}"
@@ -204,7 +203,7 @@ npm install -g @whatevertogo/astrcode@<version>
 ## 项目特定易错点
 
 - 不要把 `eval-tasks/fixtures/` 里的 fixture 版本随发版 bump。
-- `src-tauri/Cargo.toml` 使用 workspace 版本；桌面展示版本在 `src-tauri/tauri.conf.json`。
+- `frontend/package.json` 是 Web UI 包版本，发版时会一并同步。
 - npm 主包和平台包 license 必须是 `AGPL-3.0-only`。
 - Release notes 安装命令必须是 `@whatevertogo/astrcode`，不是裸 `astrcode`。
 - Weekly Release 只在上一个 `v*` tag 后有新提交时发布，不发布空版本。

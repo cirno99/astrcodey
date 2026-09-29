@@ -28,6 +28,23 @@ export default function App() {
     (s) => s.kanbanExtensionAvailable
   )
   const [mainView, setMainView] = useState<MainView>('chat')
+  /**
+   * 会话视图的后退目标。
+   *
+   * 只有「从看板点卡片跳进会话」会留下来路，它决定顶栏是否出现后退按钮；其余入口
+   * （侧边栏切会话、切插件/设置）都必须清掉它，否则会留下指向打不开的视图的死按钮。
+   */
+  const [chatBackView, setChatBackView] = useState<MainView | null>(null)
+
+  const openView = (view: MainView) => {
+    setChatBackView(null)
+    setMainView(view)
+  }
+
+  const openConversationFromKanban = () => {
+    setChatBackView('kanban')
+    setMainView('chat')
+  }
 
   const { width, isOpen, toggle, onResizeStart, isResizing } =
     useSidebarResize()
@@ -41,6 +58,10 @@ export default function App() {
     mainView === 'kanban' && kanbanExtensionAvailable !== true
       ? 'chat'
       : mainView
+
+  // 看板插件被禁用时来路失效：不显示后退按钮，免得跳回一个已被隐藏的视图。
+  const backToKanban =
+    chatBackView === 'kanban' && kanbanExtensionAvailable === true
 
   if (connectionStatus !== 'connected') {
     return <ConnectingScreen />
@@ -67,10 +88,10 @@ export default function App() {
             <Sidebar
               activeView={activeView}
               onToggleSidebar={toggle}
-              onOpenChat={() => setMainView('chat')}
-              onOpenPlugins={() => setMainView('plugins')}
-              onOpenKanban={() => setMainView('kanban')}
-              onOpenSettings={() => setMainView('settings')}
+              onOpenChat={() => openView('chat')}
+              onOpenPlugins={() => openView('plugins')}
+              onOpenKanban={() => openView('kanban')}
+              onOpenSettings={() => openView('settings')}
             />
           </div>
         )}
@@ -86,24 +107,28 @@ export default function App() {
               <PluginsPage
                 isSidebarOpen={isOpen}
                 onToggleSidebar={toggle}
-                onOpenSettings={() => setMainView('settings')}
+                onOpenSettings={() => openView('settings')}
               />
             )}
             {activeView === 'settings' && (
               <SettingsPage
                 isSidebarOpen={isOpen}
                 onToggleSidebar={toggle}
-                onOpenPlugins={() => setMainView('plugins')}
+                onOpenPlugins={() => openView('plugins')}
               />
             )}
             {activeView === 'chat' && (
-              <ChatView isSidebarOpen={isOpen} onToggleSidebar={toggle} />
+              <ChatView
+                isSidebarOpen={isOpen}
+                onToggleSidebar={toggle}
+                onBack={backToKanban ? () => openView('kanban') : undefined}
+              />
             )}
             {activeView === 'kanban' && (
               <KanbanPage
                 isSidebarOpen={isOpen}
                 onToggleSidebar={toggle}
-                onOpenChat={() => setMainView('chat')}
+                onOpenChat={openConversationFromKanban}
               />
             )}
           </Suspense>

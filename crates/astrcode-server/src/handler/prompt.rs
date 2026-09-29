@@ -28,7 +28,7 @@ impl CommandHandler {
         {
             match self.execute_command_for_session(sid.clone(), command).await {
                 Ok(_) => return Ok(()),
-                // 未注册的斜杠命令按普通文本透传给模型，与 TUI/HTTP 端行为一致；
+                // 未注册的斜杠命令按普通文本透传给模型，与 HTTP 端行为一致；
                 // 只有显式命令端点(ExecuteExtensionCommand)保留 UnknownCommand 报错。
                 Err(HandlerError::UnknownCommand(_)) => {},
                 Err(error) => {

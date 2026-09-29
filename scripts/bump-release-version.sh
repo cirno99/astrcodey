@@ -69,7 +69,6 @@ def update_npm_package(path: Path) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n")
 
 replace_workspace_version(Path("Cargo.toml"))
-update_json_version(Path("src-tauri/tauri.conf.json"))
 update_npm_package(Path("npm/astrcode/package.json"))
 replace_package_version(Path("crates/astrcode-extensions/tests/s5r-guest/Cargo.toml"))
 

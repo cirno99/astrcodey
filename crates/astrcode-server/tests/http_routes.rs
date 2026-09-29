@@ -227,14 +227,15 @@ async fn http_routes_do_not_require_auth_token() {
 }
 
 #[tokio::test]
-async fn cors_allows_supported_tauri_origins_only() {
+async fn cors_allows_only_supported_origins() {
     let runtime = runtime(Arc::new(immediate_llm())).await;
     let app = router(runtime).unwrap();
 
     for origin in [
-        "tauri://localhost",
-        "http://tauri.localhost",
-        "https://tauri.localhost",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
     ] {
         let response = app
             .clone()

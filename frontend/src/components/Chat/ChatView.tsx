@@ -10,11 +10,14 @@ import { effectiveConversationPhase } from '../../store/phaseHelpers'
 interface ChatViewProps {
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  /** 从看板跳进会话时提供回退入口；其余入口不传，顶栏就没有后退按钮。 */
+  onBack?: () => void
 }
 
 export default function ChatView({
   isSidebarOpen,
   onToggleSidebar,
+  onBack,
 }: ChatViewProps) {
   const blocks = useAppStore((s) => s.blocks)
   const activeSessionId = useAppStore((s) => s.activeSessionId)
@@ -41,7 +44,11 @@ export default function ChatView({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel-bg">
-      <TopBar isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
+      <TopBar
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        onBack={onBack}
+      />
       <PendingAskUserBanner />
       {showHeroComposer ? (
         <main className="flex min-h-0 flex-1 flex-col bg-panel-bg px-[var(--layout-page-padding-x)] pb-5">

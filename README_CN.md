@@ -7,12 +7,11 @@
 
 | 界面 | 预览 |
 |------|------|
-| **CLI（TUI）** | <img width="1210" height="924" alt="astrcode TUI screenshot" src="https://github.com/user-attachments/assets/55259723-9bd7-4a1a-a74e-1e799ece2eed" /> |
-| **Web / 桌面端** | <img width="1197" height="805" alt="image" src="https://github.com/user-attachments/assets/9c8d96e1-61df-4e3e-8139-34a8b1b3aaef" /> |
+| **Web UI** | <img width="1197" height="805" alt="image" src="https://github.com/user-attachments/assets/9c8d96e1-61df-4e3e-8139-34a8b1b3aaef" /> |
 
 用 Rust 从零构建的 AI 编程助手平台。
 
-AstrCode 是一个由 Rust workspace 与 React + TypeScript 前端组成的全栈 AI 编程助手。包含带工具执行的 Agent 循环、基于 SSE 流式传输的多 Provider LLM 层（Anthropic 与 OpenAI 兼容 Provider）、面向内置扩展与磁盘 IPC 子进程扩展的类型化作者接口（后台预热、健康检查、启动阶段事件通道）、MCP 常驻进程池（跨 turn 复用长连接）、内置 Web 搜索与 URL 抓取工具、带自动压缩的上下文窗口管理、评测框架，以及多种交互方式：终端 TUI、Web 前端、Tauri 桌面应用、HTTP/SSE API 和 ACP（Agent Client Protocol）适配器。
+AstrCode 是一个由 Rust workspace 与 React + TypeScript 前端组成的全栈 AI 编程助手。包含带工具执行的 Agent 循环、基于 SSE 流式传输的多 Provider LLM 层（Anthropic 与 OpenAI 兼容 Provider）、面向内置扩展与磁盘 IPC 子进程扩展的类型化作者接口（后台预热、健康检查、启动阶段事件通道）、MCP 常驻进程池（跨 turn 复用长连接）、内置 Web 搜索与 URL 抓取工具、带自动压缩的上下文窗口管理、评测框架，以及多种交互方式：Web 前端、HTTP/SSE API 和 ACP（Agent Client Protocol）适配器。
 
 ## 目录
 
@@ -252,10 +251,7 @@ EOF
 # 3. 设置 API 密钥环境变量
 export OPENAI_API_KEY="your-api-key-here"
 
-# 4. 运行交互式终端 UI
-cargo run -- tui
-
-# 无头单次执行
+# 4. 无头单次执行
 cargo run -- exec "解释一下 agent loop 的架构"
 
 # HTTP/SSE 服务器
@@ -263,9 +259,6 @@ cargo run -- server
 
 # Web 前端（开发服务器）
 cd frontend && npm ci && npm run dev
-
-# Tauri 桌面应用（开发模式）
-cd frontend && npm ci && npm run tauri:dev
 
 # 评测框架（需要 dev-mode feature）
 cargo run --features dev-mode -- eval
@@ -288,16 +281,16 @@ AstrCode 使用存储在 `~/.astrcode/config.toml` 的 TOML 配置系统。配�
 ## 架构
 
 ```
-          ┌──────────┐  ┌───────────────────────┐  ┌───────────┐
-          │   TUI    │  │  Web / Tauri 前端      │  │ ACP 客户端 │
-          │ (ratatui)│  │  React 19 + TypeScript │  │  (stdio)  │
-          └────┬─────┘  └────────┬──────────────┘  └─────┬─────┘
-               │                  │ SSE / JSON-RPC        │ ACP JSON-RPC
-               │    stdio         │                       │ over stdio
-               └────────┬────────┘───────────────────────┘
-                   ┌─────┴──────┐
-                   │astrcode-cli│  TUI / exec / server 启动器
-                   └─────┬──────┘
+          ┌───────────────────────┐  ┌───────────┐
+          │      Web 前端          │  │ ACP 客户端 │
+          │ React 19 + TypeScript │  │  (stdio)  │
+          └───────────┬───────────┘  └─────┬─────┘
+                      │ SSE / JSON-RPC      │ ACP JSON-RPC
+                      │                     │ over stdio
+                      └──────────┬──────────┘
+                          ┌──────┴──────┐
+                          │ astrcode-cli │  exec / server 启动器
+                          └──────┬──────┘
                          │
                    ┌─────┴──────┐
                    │astrcode-   │  会话管理、JSON-RPC + HTTP 处理器
@@ -336,7 +329,7 @@ AstrCode 使用存储在 `~/.astrcode/config.toml` 的 TOML 配置系统。配�
 
 ## Crate 一览
 
-Cargo workspace 在 [`crates/`](crates/) 下包含 **28 个 crate**，另有 [`src-tauri/`](src-tauri/) 作为桌面壳（workspace 共 **29 个成员**）。按架构分层如下（详见[架构设计](docs/architecture.md)）。
+Cargo workspace 在 [`crates/`](crates/) 下包含 **31 个 crate**。按架构分层如下（详见[架构设计](docs/architecture.md)）。
 
 ### Layer 0：基础契约层
 
@@ -392,8 +385,7 @@ Cargo workspace 在 [`crates/`](crates/) 下包含 **28 个 crate**，另有 [`s
 
 | Crate | 说明 |
 |---|---|
-| [`astrcode-cli`](crates/astrcode-cli) | CLI 入口：TUI（ratatui）、无头 exec 与 server 启动器 |
-| [`src-tauri/`](src-tauri) | Tauri v2 桌面壳：sidecar 管理、单实例协调与原生对话框 |
+| [`astrcode-cli`](crates/astrcode-cli) | CLI 入口：无头 exec、server 与 ACP 启动器 |
 
 ### Layer 6：辅助评测层
 
@@ -499,43 +491,12 @@ Identity → System → Task Guidelines → Communication → Environment
 
 | 模式 | 命令 | 说明 |
 |---|---|---|
-| **TUI** | `cargo run -- tui` | 交互式终端 UI，支持消息历史、工具展示、斜杠命令、状态栏 |
 | **Exec** | `cargo run -- exec "提示词"` | 无头单次执行，支持 `--jsonl` |
 | **Server** | `cargo run -- server [--addr 0.0.0.0:3847]` | HTTP/SSE 服务器，支持 JSON-RPC、会话管理、实时事件流 |
 | **ACP** | `cargo run -- acp` | ACP stdio 适配器，用于 IDE/编辑器集成 |
 | **Eval** | `cargo run --features dev-mode -- eval` | 运行评测基准（需要 `dev-mode` feature） |
 | **Web** | `cargo run -- server` 后打开 `http://127.0.0.1:3847` | 浏览器聊天界面；前端产物在编译期内嵌进二进制，无需单独部署 |
 | **Web (dev)** | `cd frontend && npm run dev` | Vite 开发服务器，支持热更新，通过 SSE 连接后端 |
-| **Desktop** | `cd frontend && npm run tauri:dev` | Tauri 桌面应用（自动启动 server 作为 sidecar） |
-
-### TUI 参考
-
-**键盘快捷键：**
-
-| 按键 | 功能 |
-|---|---|
-| `Enter` | 提交提示词 / 确认斜杠命令选择 |
-| `Shift+Enter` / `Alt+Enter` | 插入换行 |
-| `Esc` | 关闭斜杠面板 / 停止流式回复 |
-| `Tab` | 补全斜杠命令 |
-| `Shift+Tab` | 触发扩展注册的快捷键 |
-| `Ctrl+A` / `Ctrl+E` | 移动到行首 / 行尾 |
-| `Ctrl+U` / `Ctrl+K` | 删除光标前 / 后的内容 |
-| `Ctrl+W` | 删除前一个单词 |
-| `Ctrl+C` | 退出（需二次确认） |
-
-**斜杠命令：**
-
-| 命令 | 说明 |
-|---|---|
-| `/new` | 创建新会话 |
-| `/resume <id>` 或 `/r <id>` | 恢复之前的会话 |
-| `/sessions` 或 `/ls` | 打开会话选择器 |
-| `/compact` | 压缩当前会话上下文 |
-| `/help` 或 `/?` | 显示帮助信息 |
-| `/quit` 或 `/q` | 退出 astrcode |
-
-扩展可在运行时注册额外的斜杠命令和快捷键。
 
 ## 延伸阅读
 
@@ -567,7 +528,6 @@ Identity → System → Task Guidelines → Communication → Environment
 
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — 工具执行管线、系统提示词设计
 - **[OpenCode](https://github.com/anomalyco/opencode)** — 前后端分离（HTTP/SSE + JSON-RPC）参考了 OpenCode 的架构。
-- **[Codex CLI](https://github.com/openai/codex)** — TUI 布局和终端 UI 设计借鉴了 Codex 在终端中渲染 Agent 交互的方式。
 
 ## License
 

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useAppStore } from '../../store/conversation'
 import { cn } from '../../lib/utils'
-import { getHostBridge } from '../../lib/hostBridge'
 import NewProjectModal from './NewProjectModal'
 import { Icon } from '../ui'
 import { groupSessionsByWorkingDir } from './projectFolderOrder'
@@ -109,7 +108,6 @@ export default function Sidebar({
   const [refreshingSessions, setRefreshingSessions] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const bridge = useMemo(() => getHostBridge(), [])
   const projectGroups = useMemo(
     () => groupSessionsByWorkingDir(sessions),
     [sessions]
@@ -680,8 +678,6 @@ export default function Sidebar({
         <NewProjectModal
           onConfirm={handleNewProject}
           onCancel={() => setShowNewProject(false)}
-          canBrowse={bridge.canSelectDirectory}
-          onSelectDirectory={bridge.selectDirectory}
         />
       )}
       {contextMenu && (

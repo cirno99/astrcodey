@@ -4,6 +4,7 @@
 //! 所有读写都经过 [`BoardStore`]，由它串行化读-改-写并保证磁盘是唯一事实来源。
 
 use std::{
+    collections::HashMap,
     fs,
     io::Write as _,
     path::{Path, PathBuf},
@@ -87,6 +88,17 @@ impl Card {
     }
 }
 
+/// 卡片的工作目录归属键。
+///
+/// 同一项目的不同写法（尾斜杠、符号链接）必须归到同一个键，否则「同项目串行」会在
+/// 两个键之间失效。目录不存在时回退到原字符串：那种卡片本来就建不了 session，
+/// 不该在调度阶段把它变成错误。
+pub fn project_key(working_dir: &str) -> String {
+    fs::canonicalize(working_dir)
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| working_dir.to_string())
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Board {
@@ -110,6 +122,15 @@ impl Board {
             .iter()
             .filter(|card| card.column.is_running())
             .count()
+    }
+
+    /// 按工作目录聚合运行中卡片数，供「同项目串行」判定使用。
+    pub fn running_count_by_project(&self) -> HashMap<String, usize> {
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        for card in self.cards.iter().filter(|card| card.column.is_running()) {
+            *counts.entry(project_key(&card.working_dir)).or_default() += 1;
+        }
+        counts
     }
 }
 

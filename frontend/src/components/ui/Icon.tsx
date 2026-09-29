@@ -5,6 +5,7 @@ export type IconName =
   | 'send'
   | 'close'
   | 'chevron-right'
+  | 'arrow-left'
   | 'plug'
   | 'folder'
   | 'project'
@@ -55,6 +56,12 @@ const icons: Record<
   'chevron-right': (props) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
       <polyline points="9 18 15 12 9 6" strokeWidth="2" />
+    </svg>
+  ),
+  'arrow-left': (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <line x1="19" y1="12" x2="5" y2="12" strokeWidth="2.5" />
+      <polyline points="12 5 5 12 12 19" strokeWidth="2.5" />
     </svg>
   ),
   plug: (props) => (

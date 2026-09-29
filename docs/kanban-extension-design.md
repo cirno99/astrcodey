@@ -85,7 +85,8 @@ struct Board { cards: Vec<Card> }
 {
   "automationEnabled": false,        // 自动化总开关；与扩展启用状态相互独立
   "pollIntervalSecs": 30,
-  "maxConcurrentCards": 1,
+  "maxConcurrentCards": 4,            // 跨项目并行的全局闸门
+  "maxConcurrentCardsPerProject": 1,  // 同一工作目录同时运行的卡片数
   "maxAttemptsPerCard": 10,
   "maxContinuationsPerTurn": 200,
   "maxErrorRetriesPerCard": 3,      // 执行失败重试次数上限；与 maxAttemptsPerCard 语义分离
@@ -107,7 +108,7 @@ struct Board { cards: Vec<Card> }
 
 1. 从磁盘重新加载看板（不信任内存快照）。
 2. 对 `analyzing` / `implementing` 的卡片做一致性检查（见 6.3）。
-3. 统计在跑卡片数，若 `< maxConcurrentCards` 则领取 `ready` 卡片。
+3. 在全局额度 `< maxConcurrentCards` 内领取 `ready` 卡片，且同一工作目录的卡片数不超过 `maxConcurrentCardsPerProject`：不同项目可以同时推进，同项目串行。
 
 ### 6.2 领取与执行
 
@@ -195,12 +196,17 @@ kanban_update_card(cardId: string, column: "done" | "blocked", note?: string)
 | POST | `/cards` | 新建卡片 |
 | PATCH | `/cards/{cardId}` | 更新标题 / 正文 / 工作目录 / 列 |
 | DELETE | `/cards/{cardId}` | 删除卡片 |
+| POST | `/directories` | 列举本机一层子目录，供新建卡片的文件夹选择器使用 |
 
 `PATCH` 是唯一允许用户改列的入口，且拒绝写入 `analyzing` / `implementing`。
+
+`/directories` 用 POST 而不是 GET：绝对路径里可能有空格与非 ASCII 字符，走 query 就得在前端编码、在扩展里解码，而扩展没有 URL 解码依赖。它只列一层目录、不读文件内容，单层最多 500 条（`truncated` 标记截断），路径不存在、指向文件或不是绝对路径时返回 400。
 
 ## 9. 前端
 
 - 新增 `components/Kanban/KanbanPage.tsx`：六列泳道、卡片增删改、列间移动。
+- 卡片按项目路径分组，组头可展开/收起（默认展开）；分组同时用于公共区四格与日历的两个槽位。
+- 新建卡片弹窗里的「选择文件夹」调用 `/directories` 自绘选择器：浏览器的文件夹选择器只能给出文件夹名、给不出本机绝对路径。
 - `App.tsx` 的 `MainView` 增加 `'kanban'`。
 - `Sidebar.tsx` 增加入口按钮，仅在扩展 `enabled && loaded` 时渲染。
 - 扩展被禁用时，若当前正处于看板视图则回落到 `chat`。
@@ -223,9 +229,10 @@ kanban_update_card(cardId: string, column: "done" | "blocked", note?: string)
 ## 11. 已知风险
 
 - **幂等**：进程崩溃或扩展重载会留下 `analyzing` / `implementing` 但没有存活任务的卡片，靠 6.3 的存活集合检查兜底；该检查必须每轮都跑。
-- **并发**：`maxConcurrentCards` 是唯一闸门。多张卡片指向同一工作目录时仍会互相踩工作区，本设计不做工作区互斥。
+- **并发**：`maxConcurrentCards`（全局）与 `maxConcurrentCardsPerProject`（按工作目录）共同构成闸门。同项目卡片串行，不会互相踩工作区；跨项目并行时共享机器与模型配额，除全局上限外没有额外背压。
+- **项目键**：同项目靠 `project_key` 归一（`canonicalize`，失败回退原字符串）识别。目录不存在时，同一目录的不同写法会被当成不同项目；这类卡片本来就建不了 session，影响仅限于调度顺序。
 - **空转**：agent 不调用 `kanban_update_card` 时，扩展会重投到 `maxAttemptsPerCard` 为止，期间持续消耗 token。
 - **可见性**：自动化失败只写 tracing 与卡片 `note`，用户需要主动看看板才能发现。
 - **分类脆弱**：失败分类基于错误文本，宿主文案一变就会静默降级为 `Transient`，最多烧完 `maxErrorRetriesPerCard` 次再 `blocked`。
 - **守卫边界**：退化重复守卫只覆盖正文重复，不覆盖工具调用重复（已有 `tool_deduplicator`）与 thinking 重复；无换行的长串重复也不在覆盖范围内。
-- **运行前提**：manifest 要求 `authenticated_http` 传输，只有 `astrcode server`（以及桌面端拉起的 sidecar）会加载本扩展；`tui` / `exec` / `acp` 用的是空传输 profile，扩展会被准入拒绝，自动化不会运行。无头跑自动化必须走 server 模式。
+- **运行前提**：manifest 要求 `authenticated_http` 传输，只有 `astrcode server` 会加载本扩展；`exec` / `acp` 用的是空传输 profile，扩展会被准入拒绝，自动化不会运行。无头跑自动化必须走 server 模式。

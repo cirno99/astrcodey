@@ -1,6 +1,6 @@
 //! 无头执行模式 —— 单次提示执行（进程内）。
 //!
-//! 该模块实现了 CLI 的 `exec` 子命令，用于在不需要交互式 TUI 的情况下
+//! 该模块实现了 CLI 的 `exec` 子命令，用于在无交互界面的情况下
 //! 一次性提交提示并输出结果。支持纯文本和 JSONL 两种输出格式，
 //! 并可通过 [`ResumeTarget`] 续接既有会话。
 
@@ -19,7 +19,7 @@ use astrcode_protocol::{
 };
 use thiserror::Error;
 
-use crate::{transport::InProcessTransport, tui::store::session_picker::canonicalize_working_dir};
+use crate::transport::InProcessTransport;
 
 #[derive(Debug, Error)]
 pub enum ExecError {
@@ -195,6 +195,27 @@ async fn recv_notification(
     Ok(received?)
 }
 
+/// 将工作目录路径规范化以用于会话过滤比较。
+///
+/// 优先调用 `canonicalize` 解析符号链接和相对路径，失败时回退到去尾部斜杠的形式。
+/// 这样即使 session 元数据中的路径风格略有差异（结尾斜杠、相对路径），
+/// 也能正确匹配到当前进程的 cwd。
+fn canonicalize_working_dir(path: &str) -> String {
+    if path.is_empty() {
+        return String::new();
+    }
+    if let Ok(canon) = std::fs::canonicalize(std::path::Path::new(path)) {
+        return canon.to_string_lossy().into_owned();
+    }
+    // 路径不存在或不可访问时的回退：去掉尾部斜杠（根 `/` 除外）。
+    let trimmed = path.trim_end_matches('/');
+    if trimmed.is_empty() {
+        "/".into()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 /// 选择最近活跃的会话；`all` 为假时只考虑当前工作目录下的会话。
 fn pick_latest_session(sessions: &[SessionListItemDto], all: bool) -> Option<String> {
     let cwd = canonicalize_working_dir(
@@ -202,7 +223,7 @@ fn pick_latest_session(sessions: &[SessionListItemDto], all: bool) -> Option<Str
             .map(|path| path.display().to_string())
             .unwrap_or_else(|_| ".".into()),
     );
-    // last_active_at 是 ISO 8601 时间串，字典序即时间先后（与 TUI session picker 一致）。
+    // last_active_at 是 ISO 8601 时间串，字典序即时间先后。
     sessions
         .iter()
         .filter(|session| all || canonicalize_working_dir(&session.working_dir) == cwd)
@@ -459,5 +480,35 @@ mod tests {
 
         assert_eq!(pick_latest_session(&sessions, false), None);
         assert_eq!(pick_latest_session(&[], true), None);
+    }
+    #[test]
+    fn canonicalize_strips_trailing_slash_when_path_missing() {
+        // 不存在的路径走回退分支
+        assert_eq!(canonicalize_working_dir("/no/such/path/"), "/no/such/path");
+        if cfg!(unix) {
+            assert_eq!(canonicalize_working_dir("/"), "/");
+        } else if cfg!(windows) {
+            // 在 Windows 上，`/` 被解析为当前驱动器根目录（如 `D:\`），是个真实存在的路径，
+            // 因而不会走 fallback 分支，而是成功规范化为带有 UNC 前缀的根盘符。
+            let res = canonicalize_working_dir("/");
+            assert!(res.contains(":\\") || res.contains(":/") || res.starts_with("\\\\?\\"));
+        }
+        assert_eq!(canonicalize_working_dir(""), "");
+    }
+
+    #[test]
+    fn canonicalize_resolves_existing_path() {
+        // 用 std::env::temp_dir 这种存在的路径验证 canonicalize 路径起效
+        let tmp = std::env::temp_dir();
+        let with_slash = format!("{}/", tmp.display());
+        let canon = canonicalize_working_dir(&with_slash);
+        // canonicalize 后没有尾部斜杠
+        assert!(!canon.ends_with('/') || canon == "/");
+        // 与直接 canonicalize 同一路径结果相同
+        let expected = std::fs::canonicalize(&tmp)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(canon, expected);
     }
 }

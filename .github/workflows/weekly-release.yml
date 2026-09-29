@@ -78,7 +78,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.new_version }}"
           bash scripts/bump-release-version.sh "${VERSION}"
-          cargo check --workspace --exclude astrcode-desktop
+          cargo check --workspace
 
       - name: Generate release notes
         if: steps.check.outputs.has_changes == 'true'

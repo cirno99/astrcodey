@@ -20,6 +20,7 @@ import type {
   ConversationStreamEnvelope,
   KanbanBoardResponse,
   KanbanCard,
+  KanbanDirectoryListing,
   PendingAskUserQuestion,
   PendingAskUserQuestionsResponse,
   PromptAttachmentWire,
@@ -426,6 +427,28 @@ function decodeKanbanCard(value: unknown): KanbanCard {
 export function decodeKanbanBoard(value: unknown): KanbanBoardResponse {
   const object = decodeObject(value, 'kanban board')
   return { cards: arrayField(object, 'cards').map(decodeKanbanCard) }
+}
+
+function decodeKanbanDirectoryEntry(
+  value: unknown
+): KanbanDirectoryListing['entries'][number] {
+  const object = decodeObject(value, 'kanban directory entry')
+  return {
+    name: requiredString(object, 'name'),
+    path: requiredString(object, 'path'),
+  }
+}
+
+export function decodeKanbanDirectoryListing(
+  value: unknown
+): KanbanDirectoryListing {
+  const object = decodeObject(value, 'kanban directory listing')
+  return {
+    path: requiredString(object, 'path'),
+    parent: optionalString(object, 'parent') ?? null,
+    entries: arrayField(object, 'entries').map(decodeKanbanDirectoryEntry),
+    truncated: requiredBoolean(object, 'truncated'),
+  }
 }
 
 export function decodeConversationStreamEnvelope(

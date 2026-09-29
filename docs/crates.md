@@ -6,7 +6,7 @@
 
 ## 总览
 
-AstrCode 当前 workspace 有 29 个成员：`crates/` 下 28 个 crate，加上 `src-tauri` 的桌面壳 `astrcode-desktop`。
+AstrCode 当前 workspace 有 31 个成员，全部位于 `crates/` 下。
 
 整体分层可以按依赖方向理解：
 
@@ -15,12 +15,12 @@ AstrCode 当前 workspace 有 29 个成员：`crates/` 下 28 个 crate，加上
 3. 会话运行时层：`astrcode-session`。
 4. 扩展系统层：作者面 `astrcode-extension-sdk`、外部进程运行时 `astrcode-extension-worker`、宿主 `astrcode-extensions`，以及 `astrcode-bundled-extensions` 和各 `astrcode-extension-*` 内置扩展。
 5. 服务与客户端层：`astrcode-server`、`astrcode-client`。
-6. 用户入口层：`astrcode-cli`、`astrcode-desktop`。
+6. 用户入口层：`astrcode-cli`。
 7. 辅助评测层：`astrcode-eval`。
 
 一个关键边界：所有 `astrcode-extension-*` 内置扩展都只依赖 `astrcode-extension-sdk`，不直接依赖 server/session/storage 等宿主内部 crate。这保证内置扩展和外置扩展走同一套公开 SDK 契约。
 
-依赖方向由 `scripts/check-deps.py` 检查。脚本使用的校验层级偏向依赖可达性（例如 desktop 作为最终应用入口独立约束），不完全等同于上面的产品架构分层；文档中的分层用于理解职责边界。
+依赖方向由 `scripts/check-deps.py` 检查。脚本使用的校验层级偏向依赖可达性，不完全等同于上面的产品架构分层；文档中的分层用于理解职责边界。
 
 ## Workspace 成员索引
 
@@ -51,10 +51,9 @@ AstrCode 当前 workspace 有 29 个成员：`crates/` 下 28 个 crate，加上
 | `astrcode-extension-web-tools` | `crates/astrcode-extension-web-tools` | lib | `web-search` 和 `fetch-url` 网络工具 |
 | `astrcode-server` | `crates/astrcode-server` | lib + bins | stdio/HTTP/ACP 后端、session manager、turn scheduler |
 | `astrcode-client` | `crates/astrcode-client` | lib | typed JSON-RPC client、transport、事件流 |
-| `astrcode-cli` | `crates/astrcode-cli` | bin | `astrcode` CLI、TUI、exec、server 子命令 |
+| `astrcode-cli` | `crates/astrcode-cli` | bin | `astrcode` CLI、exec、server、acp 子命令 |
 | `astrcode-log` | `crates/astrcode-log` | lib | tracing 初始化、stderr/file 双层日志、日志清理 |
 | `astrcode-eval` | `crates/astrcode-eval` | lib | 评测 case、runner、judge、metrics、report |
-| `astrcode-desktop` | `src-tauri` | bin | Tauri v2 桌面壳、sidecar HTTP server 管理 |
 
 ## `astrcode-core`
 
@@ -616,7 +615,7 @@ authoring API 重构把数据根目录从旧的 `~/.astrcode/memory/` 与
 
 路径：`crates/astrcode-server`
 
-职责：后端 runtime。它把 session runtime、storage、context、tools、extensions、AI provider、协议 transport 组合成可服务 CLI/TUI/HTTP/Desktop/ACP 的后端。
+职责：后端 runtime。它把 session runtime、storage、context、tools、extensions、AI provider、协议 transport 组合成可服务 CLI/HTTP/ACP 的后端。
 
 目标：
 
@@ -658,7 +657,7 @@ authoring API 重构把数据根目录从旧的 `~/.astrcode/memory/` 与
 
 路径：`crates/astrcode-client`
 
-职责：typed JSON-RPC client SDK，供 CLI/TUI 或其他 Rust 客户端连接 `astrcode-server`。
+职责：typed JSON-RPC client SDK，供 CLI 或其他 Rust 客户端连接 `astrcode-server`。
 
 主要模块：
 
@@ -675,34 +674,21 @@ authoring API 重构把数据根目录从旧的 `~/.astrcode/memory/` 与
 
 路径：`crates/astrcode-cli`
 
-职责：命令行入口和 TUI。默认 workspace member 是它，产物名为 `astrcode`。
+职责：命令行入口。默认 workspace member 是它，产物名为 `astrcode`。
 
 主要模块：
 
 - `main.rs`：CLI 参数解析和子命令入口。
-- `exec.rs`：非交互式执行模式。
+- `exec.rs`：非交互式执行模式，含会话筛选与工作目录规范化。
 - `transport.rs`：CLI 与 server 的 transport glue。
-- `tui/mod.rs`：TUI 模块根。
-- `tui/app.rs`、`tui/app/handle_event.rs`：TUI app 状态和事件处理。
-- `tui/frame`：frame event stream。
-- `tui/composer.rs`：输入区/编辑器。
-- `tui/custom_terminal.rs`、`terminal.rs`、`terminal_probe.rs`：CLI 自身的终端 I/O、viewport 与能力探测；这是 TUI 展示层，不是 Coding Extension 已删除的 PTY process/`terminal` 工具。
-- `tui/keybinding.rs`：键位处理。
-- `tui/render`：scrollback 和 visual render spec。
-- `tui/streaming`：流式输出 chunking、commit tick、controller。
-- `tui/store`：transcript、session picker、child agent 状态。
-- `tui/ext`：扩展消息、工具 UI fallback/builtin 渲染。
-- `tui/clipboard_image.rs`：剪贴板图片输入。
-- `tui/insert_history.rs`、`tui/command`：历史插入和 slash command。
-- `tui/theme.rs`、`viewport.rs`、`tool_vocab.rs`：显示主题、视口和工具文案。
 
 Feature：
 
 - `dev-mode`：启用可选依赖 `astrcode-eval`。
 
-依赖边界：依赖 client、server、protocol、core、log，并可选依赖 eval。CLI 同时可作为前端和本地 server 的启动入口；扩展作者契约由 server 在协议边界映射，TUI 不直接依赖 extension-sdk 或 context。
+依赖边界：依赖 client、server、protocol、core、log，并可选依赖 eval。CLI 既是本地 server 的启动入口，也通过进程内 transport 直接驱动无头执行；扩展作者契约由 server 在协议边界映射。
 
-测试线索：`tests/end_to_end.rs` 覆盖端到端行为；TUI 子模块有较多单元测试，尤其是 viewport、render spec、streaming chunking、session picker、child agent store。
+测试线索：`tests/end_to_end.rs` 覆盖端到端行为；`exec.rs` 内的单元测试覆盖提示解析、输出格式、会话筛选与路径规范化。
 
 ## `astrcode-log`
 
@@ -746,27 +732,3 @@ Feature：
 feature 可选依赖它。
 
 测试线索：评测 fixture 位于 `eval-tasks/fixtures/*`，包含 `buggy-rust`、`implement-trie` 等独立项目。
-
-## `astrcode-desktop`
-
-路径：`src-tauri`
-
-职责：Tauri v2 桌面壳。它不是 `crates/` 下的库 crate，而是 workspace 成员 binary，负责启动/协调本地 HTTP sidecar，并向 React 前端暴露 Tauri commands。
-
-主要模块：
-
-- `main.rs`：Tauri app builder，注册插件和 commands。
-- `commands.rs`：Tauri command。包含启动 sidecar server、窗口最小化/最大化/关闭、sidecar state 和端口响应等。
-- `instance.rs`：单实例协调、锁文件、已有实例唤起/复用。
-- `paths.rs`：`~/.astrcode`、instance lock/info 路径。
-- `build.rs`：Tauri build hook。
-
-关键行为：
-
-- sidecar 模式运行 `astrcode-http-server`，动态选择本地端口。
-- 前端通过 HTTP API + SSE 与后端通信，并使用 `tauri-plugin-http` 绕过平台 webview 网络栈差异。
-- 用 `fs2` 文件锁和 instance info 管理单实例。
-
-依赖边界：不依赖 workspace 内部 Rust crate；通过 sidecar 进程和 HTTP 协议与后端交互。
-
-测试线索：当前该 crate 主要依赖编译检查和桌面集成验证；改 commands 或 sidecar 协议时应同步前端调用方。

@@ -14,7 +14,7 @@ use parking_lot::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    board::{BoardStore, BoardStoreError, Card, CardColumn, now_rfc3339},
+    board::{Board, BoardStore, BoardStoreError, Card, CardColumn, now_rfc3339, project_key},
     config::KanbanConfig,
     failure::{self, CardAction},
     prompt,
@@ -119,19 +119,9 @@ impl KanbanRuntime {
     }
 
     fn claim_ready(self: &Arc<Self>, tasks: &ExtensionTasks) -> Result<(), KanbanError> {
-        let ready: Vec<String> = self.store.read(|board| {
-            let slots = self
-                .config
-                .max_concurrent_cards
-                .saturating_sub(board.running_count());
-            board
-                .cards
-                .iter()
-                .filter(|card| card.column == CardColumn::Ready)
-                .take(slots)
-                .map(|card| card.id.clone())
-                .collect()
-        })?;
+        let ready: Vec<String> = self
+            .store
+            .read(|board| select_claimable(board, &self.config))?;
 
         for card_id in ready {
             let claimed = self.store.mutate(|board| {
@@ -368,6 +358,37 @@ impl KanbanRuntime {
     }
 }
 
+/// 挑选本轮要领取的卡片：全局并发额度内，同一工作目录最多领取 `maxConcurrentCardsPerProject` 张。
+///
+/// 不同项目的卡片可以同时推进；同项目的卡片串行，避免两张卡在同一个工作区互相覆盖。
+fn select_claimable(board: &Board, config: &KanbanConfig) -> Vec<String> {
+    let mut slots = config
+        .max_concurrent_cards
+        .saturating_sub(board.running_count());
+    if slots == 0 {
+        return Vec::new();
+    }
+    let mut running = board.running_count_by_project();
+    let mut selected = Vec::new();
+    for card in board
+        .cards
+        .iter()
+        .filter(|card| card.column == CardColumn::Ready)
+    {
+        if slots == 0 {
+            break;
+        }
+        let used = running.entry(project_key(&card.working_dir)).or_default();
+        if *used >= config.max_concurrent_cards_per_project {
+            continue;
+        }
+        *used += 1;
+        slots -= 1;
+        selected.push(card.id.clone());
+    }
+    selected
+}
+
 async fn run_card(runtime: Arc<KanbanRuntime>, card_id: String) {
     let _guard = LiveCardGuard {
         runtime: Arc::clone(&runtime),
@@ -407,5 +428,75 @@ pub async fn automation_loop(runtime: Arc<KanbanRuntime>, tasks: ExtensionTasks)
             () = tokio::time::sleep(interval) => {}
         }
         runtime.tick(&tasks);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn card(working_dir: &str, column: CardColumn) -> Card {
+        Card::new("t".into(), "b".into(), working_dir.into(), column)
+    }
+
+    fn board(cards: Vec<Card>) -> Board {
+        Board { cards }
+    }
+
+    #[test]
+    fn different_projects_are_claimed_in_the_same_tick() {
+        let board = board(vec![
+            card("/tmp/kanban-project-a", CardColumn::Ready),
+            card("/tmp/kanban-project-b", CardColumn::Ready),
+        ]);
+        let selected = select_claimable(&board, &KanbanConfig::default());
+        assert_eq!(selected.len(), 2, "不同项目的卡片必须能同时被领取");
+    }
+
+    #[test]
+    fn cards_in_the_same_project_stay_serialized() {
+        let board = board(vec![
+            card("/tmp/kanban-project-a", CardColumn::Ready),
+            card("/tmp/kanban-project-a", CardColumn::Ready),
+        ]);
+        let selected = select_claimable(&board, &KanbanConfig::default());
+        assert_eq!(selected, vec![board.cards[0].id.clone()]);
+    }
+
+    #[test]
+    fn global_cap_still_limits_total_concurrency() {
+        let board = board(vec![
+            card("/tmp/kanban-project-a", CardColumn::Ready),
+            card("/tmp/kanban-project-b", CardColumn::Ready),
+            card("/tmp/kanban-project-c", CardColumn::Ready),
+        ]);
+        let config = KanbanConfig {
+            max_concurrent_cards: 2,
+            ..KanbanConfig::default()
+        };
+        assert_eq!(select_claimable(&board, &config).len(), 2);
+    }
+
+    #[test]
+    fn running_cards_consume_their_project_slot() {
+        let board = board(vec![
+            card("/tmp/kanban-project-a", CardColumn::Implementing),
+            card("/tmp/kanban-project-a", CardColumn::Ready),
+            card("/tmp/kanban-project-b", CardColumn::Ready),
+        ]);
+        let selected = select_claimable(&board, &KanbanConfig::default());
+        assert_eq!(selected, vec![board.cards[2].id.clone()]);
+    }
+
+    #[test]
+    fn terminal_and_idle_columns_do_not_consume_slots() {
+        let board = board(vec![
+            card("/tmp/kanban-project-a", CardColumn::Done),
+            card("/tmp/kanban-project-a", CardColumn::Blocked),
+            card("/tmp/kanban-project-a", CardColumn::Backlog),
+            card("/tmp/kanban-project-a", CardColumn::Ready),
+        ]);
+        let selected = select_claimable(&board, &KanbanConfig::default());
+        assert_eq!(selected.len(), 1, "终态与待办卡片不占用项目额度");
     }
 }

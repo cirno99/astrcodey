@@ -13,11 +13,13 @@ use serde_json::json;
 use crate::{
     RuntimeHolder,
     board::{BoardStoreError, Card, CardColumn, now_rfc3339, parse_day},
+    directory::{self, DirectoryError},
 };
 
 pub const ROUTE_BOARD: &str = "/board";
 pub const ROUTE_CARDS: &str = "/cards";
 pub const ROUTE_CARD: &str = "/cards/{cardId}";
+pub const ROUTE_DIRECTORIES: &str = "/directories";
 
 pub fn routes() -> Vec<ExtensionHttpRoute> {
     vec![
@@ -29,6 +31,8 @@ pub fn routes() -> Vec<ExtensionHttpRoute> {
             .description("更新看板卡片"),
         ExtensionHttpRoute::authenticated(ExtensionHttpMethod::Delete, ROUTE_CARD)
             .description("删除看板卡片"),
+        ExtensionHttpRoute::authenticated(ExtensionHttpMethod::Post, ROUTE_DIRECTORIES)
+            .description("列举本机目录，供看板的文件夹选择器使用"),
     ]
 }
 
@@ -136,6 +140,18 @@ struct UpdateCardRequest {
     date: Option<String>,
 }
 
+/// 文件夹选择器的请求体。
+///
+/// 路径走 body 而不是 query：绝对路径里可能有空格与非 ASCII 字符，走 query 就得在前端
+/// 编码、在扩展里解码，而扩展没有 URL 解码依赖。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ListDirectoriesRequest {
+    /// 要列举的目录；空串表示从服务端进程的当前目录开始。
+    #[serde(default)]
+    path: String,
+}
+
 pub struct KanbanHttpHandler {
     runtime: RuntimeHolder,
 }
@@ -149,6 +165,12 @@ impl KanbanHttpHandler {
 #[async_trait::async_trait]
 impl ExtensionHttpHandler for KanbanHttpHandler {
     async fn handle(&self, ctx: HttpContext) -> Result<ExtensionHttpResponse, ExtensionError> {
+        // 目录列举只看文件系统、不碰看板状态，因此排在运行期守卫之前：
+        // 看板数据不可用时，文件夹选择器没有理由跟着一起失效。
+        if ctx.route().path == ROUTE_DIRECTORIES {
+            return list_directories_response(&ctx);
+        }
+
         let Some(runtime) = self.runtime.lock().clone() else {
             return Ok(unavailable());
         };
@@ -276,6 +298,23 @@ impl ExtensionHttpHandler for KanbanHttpHandler {
     }
 }
 
+/// 列举一层子目录。
+///
+/// 路径本身的问题（不存在、指向文件、不是绝对路径）是用户输入错误，返回 400 与可读消息，
+/// 让选择器把消息显示在弹窗里；真正的 IO 故障才是 500。
+fn list_directories_response(ctx: &HttpContext) -> Result<ExtensionHttpResponse, ExtensionError> {
+    let request: ListDirectoriesRequest = ctx.json()?;
+    Ok(match directory::list_directories(&request.path) {
+        Ok(listing) => {
+            ExtensionHttpResponse::json(200, serde_json::to_value(listing).map_err(internal)?)
+        },
+        Err(DirectoryError::Io(error)) => {
+            ExtensionHttpResponse::error(500, "internal", error.to_string())
+        },
+        Err(error) => ExtensionHttpResponse::error(400, "invalid_input", error.to_string()),
+    })
+}
+
 fn unavailable() -> ExtensionHttpResponse {
     ExtensionHttpResponse::error(503, "kanban_unavailable", "看板扩展尚未启动")
 }
@@ -311,7 +350,62 @@ fn internal(error: impl std::fmt::Display) -> ExtensionError {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use astrcode_extension_sdk::{extension::ExtensionHttpRequest, testing::HttpContextBuilder};
+
     use super::*;
+
+    /// 目录列举不碰看板状态，因此用空运行期句柄就能验证整条路由。
+    fn handler_without_runtime() -> KanbanHttpHandler {
+        KanbanHttpHandler::new(Arc::new(parking_lot::Mutex::new(None)))
+    }
+
+    fn directories_route() -> ExtensionHttpRoute {
+        routes()
+            .into_iter()
+            .find(|route| route.path == ROUTE_DIRECTORIES)
+            .expect("directories 路由必须注册")
+    }
+
+    async fn call_directories(path: &str) -> ExtensionHttpResponse {
+        let request = ExtensionHttpRequest::new(ExtensionHttpMethod::Post, ROUTE_DIRECTORIES)
+            .json_body(json!({ "path": path }));
+        handler_without_runtime()
+            .handle(
+                HttpContextBuilder::new(crate::EXTENSION_ID, directories_route(), request).build(),
+            )
+            .await
+            .expect("handler must not fail")
+    }
+
+    #[tokio::test]
+    async fn directories_route_lists_subdirectories() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("alpha")).unwrap();
+        std::fs::write(root.path().join("note.txt"), b"x").unwrap();
+
+        let response = call_directories(&root.path().to_string_lossy()).await;
+
+        assert_eq!(response.status, 200);
+        assert_eq!(
+            response.body["path"],
+            root.path().to_string_lossy().as_ref()
+        );
+        assert_eq!(response.body["entries"].as_array().unwrap().len(), 1);
+        assert_eq!(response.body["entries"][0]["name"], "alpha");
+    }
+
+    #[tokio::test]
+    async fn directories_route_reports_bad_paths_as_client_errors() {
+        let root = tempfile::tempdir().unwrap();
+        let missing = root.path().join("missing");
+
+        let response = call_directories(&missing.to_string_lossy()).await;
+
+        assert_eq!(response.status, 400);
+        assert_eq!(response.body["error"]["code"], "invalid_input");
+    }
 
     #[test]
     fn running_columns_are_not_user_writable() {
@@ -372,6 +466,15 @@ mod tests {
         serde_json::from_value::<UpdateCardRequest>(json!({ "date": "2026-03-07" }))
             .expect("date 必须被接受");
         serde_json::from_value::<UpdateCardRequest>(json!({ "unexpected": true }))
+            .expect_err("unknown fields must be rejected");
+    }
+
+    #[test]
+    fn list_directories_request_defaults_and_rejects_unknown_fields() {
+        let request: ListDirectoriesRequest =
+            serde_json::from_value(json!({})).expect("path 必须可选");
+        assert_eq!(request.path, "");
+        serde_json::from_value::<ListDirectoriesRequest>(json!({ "unexpected": true }))
             .expect_err("unknown fields must be rejected");
     }
 }

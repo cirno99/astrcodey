@@ -1044,7 +1044,7 @@ mod tests {
 
 /// Keybinding registered by an extension.
 ///
-/// When the user presses the corresponding key combination, the TUI executes the associated
+/// When the user presses the corresponding key combination, the client executes the associated
 /// slash command (as if the user had typed it).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Keybinding {
@@ -1063,7 +1063,7 @@ pub struct Keybinding {
 
 /// Status bar item registered by an extension.
 ///
-/// Shown in the TUI footer and frontend status bar. Extensions can dynamically update its
+/// Shown in the frontend status bar. Extensions can dynamically update its
 /// content through `StatusItemUpdate` notifications.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusItem {

@@ -38,7 +38,7 @@ export function AccordionSection({
       className={cn(
         'flex min-h-0 flex-col',
         expanded ? 'flex-1' : 'shrink-0',
-        highlighted && 'ring-1 ring-inset ring-border-strong'
+        highlighted && 'bg-accent-soft/50 ring-1 ring-inset ring-accent/30'
       )}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -49,16 +49,27 @@ export function AccordionSection({
         aria-expanded={expanded}
         onClick={onToggle}
         className={cn(
-          'flex shrink-0 items-center gap-1 border-b border-border px-2 py-1.5 text-left',
+          'flex shrink-0 items-center gap-1.5 border-b border-border px-2.5 py-2 text-left transition-colors duration-150',
           expanded
-            ? 'text-text-primary'
-            : 'text-text-muted hover:bg-surface-muted'
+            ? 'bg-surface text-text-primary'
+            : 'text-text-muted hover:bg-surface-muted hover:text-text-secondary'
         )}
       >
-        <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} />
+        <Icon
+          name={expanded ? 'chevron-down' : 'chevron-right'}
+          size={12}
+          className="shrink-0 opacity-70"
+        />
         <span className="truncate text-[12px] font-medium">{title}</span>
         {count !== undefined && (
-          <span className="ml-auto shrink-0 text-[11px] text-text-muted">
+          <span
+            className={cn(
+              'ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums',
+              expanded
+                ? 'bg-accent-soft text-accent-strong'
+                : 'bg-surface-muted text-text-muted'
+            )}
+          >
             {count}
           </span>
         )}

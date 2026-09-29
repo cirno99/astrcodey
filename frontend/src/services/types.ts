@@ -280,6 +280,22 @@ export interface KanbanBoardResponse {
   cards: KanbanCard[]
 }
 
+/** 由 astrcode-kanban 扩展的 `/directories` 路由返回的一层目录。 */
+export interface KanbanDirectoryEntry {
+  name: string
+  path: string
+}
+
+export interface KanbanDirectoryListing {
+  /** 实际列举的目录路径。 */
+  path: string
+  /** 上级目录；已经是根目录时为 `null`。 */
+  parent: string | null
+  entries: KanbanDirectoryEntry[]
+  /** 列表是否因为条目上限被截断。 */
+  truncated: boolean
+}
+
 export type ConversationDelta =
   | { kind: 'appendBlock'; block: ConversationBlock }
   | {

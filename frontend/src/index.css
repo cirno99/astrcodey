@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
-/* 自托管字体：Tauri 的 CSP 只放行 'self'（style-src/font-src），
-   远程 Google Fonts 会被拦截且离线不可用，因此改为随包分发。
+/* 自托管字体：不依赖外网 CDN，内嵌后离线也可用，
+   远程 Google Fonts 在无网络环境下会加载失败，因此改为随包分发。
    仅内置 latin / latin-ext 子集，CJK 文本按 unicode-range 回退到系统字体。 */
 @font-face {
   font-family: 'Inter';

@@ -1,10 +1,6 @@
 # cargo-deny policy — run: cargo deny check
 # https://embarkstudios.github.io/cargo-deny/
 
-[graph]
-# Desktop (Tauri) 与主 CLI/server 构建分离；CI clippy/test 亦 exclude。
-exclude = ["astrcode-desktop"]
-
 [advisories]
 version = 2
 ignore = [

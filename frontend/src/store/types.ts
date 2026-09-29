@@ -24,7 +24,6 @@ export interface ActiveSessionStream {
 }
 
 export interface AppState {
-  serverPort: number | null
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error'
   connectionError: string | null
 

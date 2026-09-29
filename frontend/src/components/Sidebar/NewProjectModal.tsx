@@ -1,28 +1,19 @@
 import { useState, useCallback } from 'react'
-import { btnPrimary, fieldButton } from '../../lib/styles'
+import { btnPrimary } from '../../lib/styles'
 import { Modal, Input, Button } from '../ui'
 
 interface NewProjectModalProps {
   onConfirm: (workingDir: string) => Promise<void>
   onCancel: () => void
-  canBrowse: boolean
-  onSelectDirectory: () => Promise<string | null>
 }
 
 export default function NewProjectModal({
   onConfirm,
   onCancel,
-  canBrowse,
-  onSelectDirectory,
 }: NewProjectModalProps) {
   const [path, setPath] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const handleSelectDirectory = useCallback(async () => {
-    const dir = await onSelectDirectory()
-    if (dir) setPath(dir)
-  }, [onSelectDirectory])
 
   const handleSubmit = useCallback(() => {
     const trimmed = path.trim()
@@ -50,23 +41,12 @@ export default function NewProjectModal({
             type="text"
             value={path}
             onChange={(e) => setPath(e.target.value)}
-            placeholder="输入或选择目录路径..."
+            placeholder="输入目录路径..."
             disabled={loading}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSubmit()
             }}
           />
-          {canBrowse && (
-            <button
-              type="button"
-              className={fieldButton}
-              onClick={() => void handleSelectDirectory()}
-              disabled={loading}
-              style={{ width: 'auto', whiteSpace: 'nowrap' }}
-            >
-              浏览...
-            </button>
-          )}
         </div>
       </div>
       {error && (

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 const MIN_POLL_INTERVAL_SECS: u64 = 5;
 const MIN_MAX_CONCURRENT_CARDS: usize = 1;
+const MIN_MAX_CONCURRENT_CARDS_PER_PROJECT: usize = 1;
 const MIN_MAX_ATTEMPTS_PER_CARD: u32 = 1;
 const MIN_MAX_CONTINUATIONS_PER_TURN: u32 = 1;
 const MIN_MAX_ERROR_RETRIES_PER_CARD: u32 = 1;
@@ -20,8 +21,12 @@ pub struct KanbanConfig {
     pub automation_enabled: bool,
     #[serde(default = "default_poll_interval_secs")]
     pub poll_interval_secs: u64,
+    /// 跨项目并行的全局闸门；单项目内部的并行度由 `maxConcurrentCardsPerProject` 决定。
     #[serde(default = "default_max_concurrent_cards")]
     pub max_concurrent_cards: usize,
+    /// 同一工作目录同时允许运行的卡片数。默认 1，保证同项目的卡片串行、不互相踩工作区。
+    #[serde(default = "default_max_concurrent_cards_per_project")]
+    pub max_concurrent_cards_per_project: usize,
     #[serde(default = "default_max_attempts_per_card")]
     pub max_attempts_per_card: u32,
     #[serde(default = "default_max_continuations_per_turn")]
@@ -43,6 +48,7 @@ impl Default for KanbanConfig {
             automation_enabled: false,
             poll_interval_secs: default_poll_interval_secs(),
             max_concurrent_cards: default_max_concurrent_cards(),
+            max_concurrent_cards_per_project: default_max_concurrent_cards_per_project(),
             max_attempts_per_card: default_max_attempts_per_card(),
             max_continuations_per_turn: default_max_continuations_per_turn(),
             max_error_retries_per_card: default_max_error_retries_per_card(),
@@ -57,7 +63,12 @@ const fn default_poll_interval_secs() -> u64 {
     30
 }
 
+/// 默认允许 4 个项目同时推进：默认 1 会让「不同项目并行」这一需求开箱即不可用。
 const fn default_max_concurrent_cards() -> usize {
+    4
+}
+
+const fn default_max_concurrent_cards_per_project() -> usize {
     1
 }
 
@@ -86,6 +97,12 @@ impl KanbanConfig {
             return Err(invalid(
                 "maxConcurrentCards",
                 "并发卡片数至少为 1".to_string(),
+            ));
+        }
+        if self.max_concurrent_cards_per_project < MIN_MAX_CONCURRENT_CARDS_PER_PROJECT {
+            return Err(invalid(
+                "maxConcurrentCardsPerProject",
+                "单项目并发卡片数至少为 1".to_string(),
             ));
         }
         if self.max_attempts_per_card < MIN_MAX_ATTEMPTS_PER_CARD {
@@ -147,7 +164,8 @@ mod tests {
         let config = KanbanConfig::default();
         assert!(!config.automation_enabled);
         assert_eq!(config.poll_interval_secs, 30);
-        assert_eq!(config.max_concurrent_cards, 1);
+        assert_eq!(config.max_concurrent_cards, 4);
+        assert_eq!(config.max_concurrent_cards_per_project, 1);
         assert_eq!(config.max_attempts_per_card, 10);
         assert_eq!(
             config.max_continuations_per_turn,
@@ -166,6 +184,18 @@ mod tests {
         assert!(error.to_string().contains("unexpected"));
     }
 
+    /// 并发闸门的 camelCase 线缆名必须被接受：写错名字会静默退回默认值。
+    #[test]
+    fn concurrency_limits_are_configurable_by_camel_case_key() {
+        let config: KanbanConfig = serde_json::from_value(serde_json::json!({
+            "maxConcurrentCards": 8,
+            "maxConcurrentCardsPerProject": 3,
+        }))
+        .expect("已知字段必须被接受");
+        assert_eq!(config.max_concurrent_cards, 8);
+        assert_eq!(config.max_concurrent_cards_per_project, 3);
+    }
+
     #[test]
     fn out_of_range_values_are_rejected_by_validation() {
         let cases = [
@@ -182,6 +212,13 @@ mod tests {
                     ..KanbanConfig::default()
                 },
                 "maxConcurrentCards",
+            ),
+            (
+                KanbanConfig {
+                    max_concurrent_cards_per_project: 0,
+                    ..KanbanConfig::default()
+                },
+                "maxConcurrentCardsPerProject",
             ),
             (
                 KanbanConfig {

@@ -38,7 +38,7 @@ Before the first run, configure an LLM provider in `~/.astrcode/config.toml`. Le
 - **Structured editing**: read, write, edit, patch tools
 - **Code search**: glob, grep
 - **Web tools**: built-in `web-search` and `fetch-url` (DuckDuckGo default; Brave/Serper optional)
-- **Multiple frontends**: TUI, Web, Desktop GUI (Tauri)
+- **Multiple frontends**: Web UI, HTTP/SSE API, ACP clients
 - **Extension system**: plugins, MCP, Skills, disk s5r extensions
 - **Session management**: event-sourcing architecture with fork, compact, and goal tracking
 
@@ -80,7 +80,7 @@ astrcode
 - **智能编辑**：read、write、edit、patch 等结构化工具
 - **代码搜索**：glob、grep 快速定位代码
 - **Web 工具**：内置 `web-search` 与 `fetch-url`（默认 DuckDuckGo；可选 Brave/Serper）
-- **多种前端**：TUI、Web、Desktop GUI
+- **多种前端**：Web UI、HTTP/SSE API、ACP 客户端
 - **扩展系统**：插件、MCP、Skills、s5r 磁盘扩展
 - **会话管理**：Event Sourcing 架构，支持 fork、compact 和目标追踪
 

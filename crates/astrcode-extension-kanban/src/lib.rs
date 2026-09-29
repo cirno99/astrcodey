@@ -9,6 +9,7 @@
 mod automation;
 mod board;
 mod config;
+mod directory;
 mod failure;
 mod http;
 mod prompt;

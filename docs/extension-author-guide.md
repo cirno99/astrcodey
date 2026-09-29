@@ -332,7 +332,7 @@ continuation 共享同一次预算。超时到达后 LLM 会看到带 `timeoutMs
 
 ## 结果呈现 intent
 
-工具结果可以声明呈现 intent，让前端和 TUI 选用对应的内置渲染（终端、diff、搜索结果、文件读取），
+工具结果可以声明呈现 intent，让前端选用对应的内置渲染（终端、diff、搜索结果、文件读取），
 而不是落到通用渲染。intent 写在 `ToolResult` 的 metadata 里，不进 LLM prompt，也不影响运行时控制流：
 
 ```rust

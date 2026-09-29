@@ -79,7 +79,7 @@ impl ServerEventBus {
     /// Subscribe to the complete transport-facing notification stream.
     ///
     /// Unlike [`Self::subscribe_global_notifications`], this includes session
-    /// events and is intended for transports such as stdio/TUI that expose one
+    /// events and is intended for transports such as stdio that expose one
     /// process-wide notification channel.
     pub fn subscribe_all_notifications(&self) -> broadcast::Receiver<ClientNotification> {
         self.all_notifications.subscribe()

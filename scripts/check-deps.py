@@ -2,7 +2,7 @@
 """Check workspace crate dependency direction rules.
 
 Layer hierarchy:
-  L1 Foundation:   astrcode-core, astrcode-desktop, astrcode-paths
+  L1 Foundation:   astrcode-core, astrcode-paths
   L2 Primitives:   astrcode-session-projection
   L3 Services:     astrcode-extension-sdk, astrcode-ai, astrcode-context,
                    astrcode-log, astrcode-storage, astrcode-s5r-runtime
@@ -30,7 +30,6 @@ from pathlib import Path
 LAYERS: dict[str, int] = {
     # L1 – Foundation
     "astrcode-core": 1,
-    "astrcode-desktop": 1,
     "astrcode-paths": 1,
     # L2 – Primitive contracts
     "astrcode-session-projection": 2,
@@ -57,6 +56,7 @@ LAYERS: dict[str, int] = {
     "astrcode-extension-memory": 4,
     "astrcode-extension-channels": 4,
     "astrcode-extension-web-tools": 4,
+    "astrcode-extension-kanban": 4,
     "astrcode-extension-session-commands": 4,
     # L5 – Runtime and composition
     "astrcode-client": 5,
@@ -113,6 +113,7 @@ CONCRETE_EXTENSION_CRATES: frozenset[str] = frozenset(
         "astrcode-extension-session-commands",
         "astrcode-extension-todo-tool",
         "astrcode-extension-web-tools",
+        "astrcode-extension-kanban",
     }
 )
 EXTENSION_INFRASTRUCTURE_CRATES: frozenset[str] = frozenset(
