@@ -161,13 +161,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteSession: async (sessionId: string) => {
-    try {
-      await api.deleteSession(sessionId)
-    } catch (err) {
-      console.error('Failed to delete session:', err)
+    await get().deleteSessions([sessionId])
+  },
+
+  deleteSessions: async (sessionIds: string[]) => {
+    if (sessionIds.length === 0) return
+    const results = await Promise.allSettled(
+      sessionIds.map((sessionId) => api.deleteSession(sessionId))
+    )
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        console.error(
+          'Failed to delete session:',
+          sessionIds[index],
+          result.reason
+        )
+      }
     }
     const state = get()
-    if (state.activeSessionId === sessionId) {
+    if (
+      state.activeSessionId != null &&
+      sessionIds.includes(state.activeSessionId)
+    ) {
       state.sessionStream?.stop()
       set(resetSessionView())
     }

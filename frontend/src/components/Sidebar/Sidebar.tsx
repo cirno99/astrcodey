@@ -88,6 +88,7 @@ export default function Sidebar({
   const createSession = useAppStore((s) => s.createSession)
   const switchSession = useAppStore((s) => s.switchSession)
   const deleteSession = useAppStore((s) => s.deleteSession)
+  const deleteSessions = useAppStore((s) => s.deleteSessions)
   const deleteProject = useAppStore((s) => s.deleteProject)
   const forkSession = useAppStore((s) => s.forkSession)
 
@@ -96,6 +97,11 @@ export default function Sidebar({
     null
   )
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(
+    () => new Set()
+  )
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false)
   const [collapsedProjectDirs, setCollapsedProjectDirs] = useState(
     readCollapsedProjectDirs
   )
@@ -129,6 +135,16 @@ export default function Sidebar({
       [...collapsedProjectDirs].filter((workingDir) => active.has(workingDir))
     )
   }, [collapsedProjectDirs, orderedWorkingDirs])
+  // 刷新后列表可能已不含某些 id，按当前会话集合剪枝，避免拿陈旧 id 去删除。
+  const effectiveSelectedSessionIds = useMemo(() => {
+    const next = new Set<string>()
+    for (const session of sessions) {
+      if (selectedSessionIds.has(session.sessionId)) next.add(session.sessionId)
+    }
+    return next
+  }, [selectedSessionIds, sessions])
+  const allSessionsSelected =
+    sessions.length > 0 && effectiveSelectedSessionIds.size === sessions.length
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
@@ -149,6 +165,51 @@ export default function Sidebar({
       return next
     })
   }, [])
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false)
+    setSelectedSessionIds(new Set())
+    setConfirmBatchDelete(false)
+  }, [])
+
+  const enterSelectMode = useCallback(() => {
+    setContextMenu(null)
+    setConfirmDelete(false)
+    setConfirmBatchDelete(false)
+    setSelectedSessionIds(new Set())
+    setSelectMode(true)
+  }, [])
+
+  const toggleSessionSelected = useCallback((sessionId: string) => {
+    setSelectedSessionIds((current) => {
+      const next = new Set(current)
+      if (next.has(sessionId)) {
+        next.delete(sessionId)
+      } else {
+        next.add(sessionId)
+      }
+      return next
+    })
+  }, [])
+
+  const toggleSelectAllSessions = useCallback(() => {
+    setSelectedSessionIds((current) => {
+      const selectedCount = sessions.filter((session) =>
+        current.has(session.sessionId)
+      ).length
+      if (sessions.length > 0 && selectedCount === sessions.length) {
+        return new Set()
+      }
+      return new Set(sessions.map((session) => session.sessionId))
+    })
+  }, [sessions])
+
+  const handleBatchDelete = useCallback(async () => {
+    const targetIds = [...effectiveSelectedSessionIds]
+    if (targetIds.length === 0) return
+    exitSelectMode()
+    await deleteSessions(targetIds)
+  }, [deleteSessions, effectiveSelectedSessionIds, exitSelectMode])
 
   const handleSessionContextMenu = useCallback(
     (event: React.MouseEvent, sessionId: string) => {
@@ -201,6 +262,18 @@ export default function Sidebar({
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [contextMenu])
+
+  useEffect(() => {
+    if (!selectMode) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      exitSelectMode()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectMode, exitSelectMode])
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -323,6 +396,80 @@ export default function Sidebar({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-5 pt-3">
+        {selectMode ? (
+          <div className="mb-2 rounded-[10px] border border-border bg-surface-soft px-2.5 py-2">
+            {confirmBatchDelete ? (
+              <>
+                <div className="mb-2 text-[12px] text-text-secondary">
+                  确认删除选中的 {effectiveSelectedSessionIds.size} 个会话？
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border bg-surface-soft px-2.5 py-1 text-[12px] font-semibold text-text-secondary hover:bg-surface-muted"
+                    onClick={() => setConfirmBatchDelete(false)}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-danger/20 bg-danger-soft px-2.5 py-1 text-[12px] font-semibold text-danger hover:brightness-98"
+                    onClick={() => void handleBatchDelete()}
+                  >
+                    删除
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[12px] font-medium text-text-secondary">
+                    已选 {effectiveSelectedSessionIds.size} 项
+                  </span>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-text-primary"
+                    onClick={exitSelectMode}
+                  >
+                    取消
+                  </button>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border bg-surface px-2.5 py-1 text-[12px] font-medium text-text-secondary transition-colors hover:bg-surface-muted hover:text-text-primary"
+                    onClick={toggleSelectAllSessions}
+                  >
+                    {allSessionsSelected ? '取消全选' : '全选'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={effectiveSelectedSessionIds.size === 0}
+                    className="rounded-lg border border-danger/20 bg-danger-soft px-2.5 py-1 text-[12px] font-semibold text-danger transition-colors hover:brightness-98 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => setConfirmBatchDelete(true)}
+                  >
+                    删除
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="mb-1 flex items-center justify-between gap-2 px-3 py-1">
+            <span className="text-[12px] font-medium text-text-muted">
+              会话
+            </span>
+            {sessions.length > 0 && (
+              <button
+                type="button"
+                className="shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-text-muted transition-colors hover:bg-surface-muted hover:text-text-primary"
+                onClick={enterSelectMode}
+              >
+                选择
+              </button>
+            )}
+          </div>
+        )}
         <div className="space-y-1">
           {orderedWorkingDirs.map((dir) => {
             const groupSessions = projectGroups.get(dir)
@@ -341,14 +488,20 @@ export default function Sidebar({
                       ? 'bg-surface-muted text-text-primary'
                       : 'text-text-secondary hover:bg-surface-muted hover:text-text-primary'
                   )}
-                  onContextMenu={(event) =>
-                    handleProjectContextMenu(event, dir)
+                  onContextMenu={
+                    selectMode
+                      ? undefined
+                      : (event) => handleProjectContextMenu(event, dir)
                   }
                 >
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left outline-none"
                     onClick={() => {
+                      if (selectMode) {
+                        toggleProjectCollapsed(dir)
+                        return
+                      }
                       if (latestSession)
                         handleSelectSession(latestSession.sessionId)
                     }}
@@ -393,14 +546,39 @@ export default function Sidebar({
                           key={session.sessionId}
                           type="button"
                           className={cn(
-                            'grid min-h-8 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-2.5 text-left text-[13px] outline-none transition-colors duration-150',
-                            isSessionActive && activeView === 'chat'
+                            'grid min-h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] outline-none transition-colors duration-150',
+                            selectMode
+                              ? 'grid-cols-[auto_minmax(0,1fr)]'
+                              : 'grid-cols-[minmax(0,1fr)_auto]',
+                            isSessionActive &&
+                              activeView === 'chat' &&
+                              !selectMode
                               ? 'bg-surface-muted text-text-primary'
                               : 'text-text-secondary hover:bg-surface-muted hover:text-text-primary'
                           )}
-                          onClick={() => handleSelectSession(session.sessionId)}
-                          onContextMenu={(event) =>
-                            handleSessionContextMenu(event, session.sessionId)
+                          onClick={() => {
+                            if (selectMode) {
+                              toggleSessionSelected(session.sessionId)
+                            } else {
+                              handleSelectSession(session.sessionId)
+                            }
+                          }}
+                          onContextMenu={
+                            selectMode
+                              ? undefined
+                              : (event) =>
+                                  handleSessionContextMenu(
+                                    event,
+                                    session.sessionId
+                                  )
+                          }
+                          role={selectMode ? 'checkbox' : undefined}
+                          aria-checked={
+                            selectMode
+                              ? effectiveSelectedSessionIds.has(
+                                  session.sessionId
+                                )
+                              : undefined
                           }
                           title={
                             session.title ||
@@ -408,6 +586,20 @@ export default function Sidebar({
                             '新对话'
                           }
                         >
+                          {selectMode && (
+                            <span
+                              className={cn(
+                                'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors duration-150',
+                                effectiveSelectedSessionIds.has(
+                                  session.sessionId
+                                )
+                                  ? 'border-btn-primary-bg bg-btn-primary-bg text-btn-primary-fg'
+                                  : 'border-border-strong text-transparent'
+                              )}
+                            >
+                              <Icon name="check" size={11} />
+                            </span>
+                          )}
                           <span className="truncate">
                             {session.firstUserMessage ||
                               session.title ||

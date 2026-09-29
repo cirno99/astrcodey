@@ -72,6 +72,8 @@ export interface AppState {
   refreshSessions: () => Promise<void>
   createSession: (workingDir: string) => Promise<void>
   deleteSession: (sessionId: string) => Promise<void>
+  /** 批量删除；只刷新一次会话列表，单条失败不影响其余会话。 */
+  deleteSessions: (sessionIds: string[]) => Promise<void>
   forkSession: (sourceSessionId: string, storageSeq?: number) => Promise<void>
   deleteProject: (workingDir: string) => Promise<void>
   bumpModelRefreshKey: () => void

@@ -22,6 +22,7 @@ export type IconName =
   | 'branch'
   | 'spark'
   | 'board'
+  | 'check'
 
 type IconProps = SVGProps<SVGSVGElement> & {
   name: IconName
@@ -194,6 +195,11 @@ const icons: Record<
       <path d="M5 8h2" strokeWidth="2" />
       <path d="M11 8h2" strokeWidth="2" />
       <path d="M17 8h2" strokeWidth="2" />
+    </svg>
+  ),
+  check: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path d="m5 12 5 5L19 7" strokeWidth="2.4" />
     </svg>
   ),
 }
