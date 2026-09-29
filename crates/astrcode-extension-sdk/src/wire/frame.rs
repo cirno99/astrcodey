@@ -52,18 +52,21 @@ async fn read_frame_from<R>(reader: &mut R) -> Result<Vec<u8>, FrameError>
 where
     R: AsyncRead + Unpin + Send,
 {
-    let mut header = Vec::new();
+    // 头部长度上限只有 32 字节，用定长栈缓冲避免逐字节增长一个 Vec。
+    let mut header = [0u8; MAX_FRAME_HEADER_BYTES];
+    let mut header_len = 0;
     loop {
         let byte = reader.read_u8().await?;
         if byte == b'\n' {
             break;
         }
-        if header.len() == MAX_FRAME_HEADER_BYTES {
+        if header_len == MAX_FRAME_HEADER_BYTES {
             return Err(FrameError::HeaderTooLong);
         }
-        header.push(byte);
+        header[header_len] = byte;
+        header_len += 1;
     }
-    let size = parse_frame_header(&header)?;
+    let size = parse_frame_header(&header[..header_len])?;
     let mut payload = vec![0; size];
     reader.read_exact(&mut payload).await?;
     Ok(payload)

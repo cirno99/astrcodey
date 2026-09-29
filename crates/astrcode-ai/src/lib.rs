@@ -4,6 +4,8 @@
 //! 提供 SSE 流式响应、指数退避重试、多字节安全 UTF-8 解码，
 //! 以及将厂商 wire stream 规范化为 [`astrcode_core::llm::LlmEvent`] 的 provider。
 
+#[cfg(test)]
+mod alloc_probe;
 mod common;
 mod provider_catalog;
 mod providers;

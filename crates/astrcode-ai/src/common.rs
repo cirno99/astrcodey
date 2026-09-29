@@ -589,13 +589,13 @@ pub(crate) async fn consume_sse_lines(
             body_preview = String::from_utf8_lossy(&bytes[..bytes.len().min(512)]).to_string();
         }
         if let Some(text) = decoder.push(&bytes).map_err(stream_decoder_error)?
-            && !consume_decoded_lines(&mut line_reader, &text, &mut on_line)?
+            && !consume_decoded_lines(&mut line_reader, text, &mut on_line)?
         {
             return Ok(None);
         }
     }
     if let Some(tail) = decoder.finish()
-        && !consume_decoded_lines(&mut line_reader, &tail, &mut on_line)?
+        && !consume_decoded_lines(&mut line_reader, tail, &mut on_line)?
     {
         return Ok(None);
     }
@@ -616,7 +616,7 @@ fn consume_decoded_lines(
     on_line: &mut impl FnMut(&str) -> bool,
 ) -> Result<bool, LlmError> {
     for line in line_reader.push_chunk(text).map_err(stream_decoder_error)? {
-        if !on_line(&line) {
+        if !on_line(line) {
             return Ok(false);
         }
     }

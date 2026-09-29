@@ -244,6 +244,8 @@ fn replay_events_before_at_path(
     let Some(mut position) = last_committed_offset(&mut file, file_len)? else {
         return Ok(Vec::new());
     };
+    // 反向扫描窗口与跨轮残片都跨迭代复用，稳态下不再产生堆分配。
+    let mut window = Vec::new();
     let mut leading_fragment = Vec::new();
     let mut events = Vec::with_capacity(max_events);
     let mut newer_seq = None;
@@ -251,19 +253,24 @@ fn replay_events_before_at_path(
 
     while position > 0 && events.len() < max_events {
         let start = position.saturating_sub(REVERSE_SCAN_CHUNK_BYTES);
-        let mut chunk = vec![0; (position - start) as usize];
+        window.clear();
+        window.resize((position - start) as usize, 0);
         file.seek(SeekFrom::Start(start))
-            .and_then(|_| file.read_exact(&mut chunk))
+            .and_then(|_| file.read_exact(&mut window))
             .map_err(StorageError::Io)?;
-        chunk.extend_from_slice(&leading_fragment);
+        window.extend_from_slice(&leading_fragment);
 
-        let (complete, next_fragment) = if start == 0 {
-            (chunk.as_slice(), Vec::new())
-        } else if let Some(first_newline) = chunk.iter().position(|byte| *byte == b'\n') {
-            (&chunk[first_newline + 1..], chunk[..first_newline].to_vec())
+        // 窗口首部是一个可能被截断的行：`start == 0` 表示窗口已到文件开头，整段都是
+        // 完整内容；否则首个换行之前的部分留作下一轮的残片。
+        let (complete_start, fragment_end) = if start == 0 {
+            (0, 0)
         } else {
-            (&[][..], chunk)
+            match window.iter().position(|byte| *byte == b'\n') {
+                Some(first_newline) => (first_newline + 1, first_newline),
+                None => (window.len(), window.len()),
+            }
         };
+        let complete = &window[complete_start..];
 
         for line in complete.rsplit(|byte| *byte == b'\n') {
             if line.iter().all(u8::is_ascii_whitespace) {
@@ -312,7 +319,10 @@ fn replay_events_before_at_path(
                 }
             }
         }
-        leading_fragment = next_fragment;
+        leading_fragment.clear();
+        if start != 0 {
+            leading_fragment.extend_from_slice(&window[..fragment_end]);
+        }
         position = start;
     }
 
