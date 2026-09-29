@@ -64,6 +64,7 @@ struct Card {
     working_dir: String,    // 绝对路径
     session_id: Option<String>,
     attempt: u32,           // 已投递的 turn 轮次
+    error_retries: u32,     // 执行失败重试次数（与 attempt 语义分离）
     note: Option<String>,   // agent 或扩展写入的最近一条说明
     created_at: String,     // RFC 3339
     updated_at: String,
@@ -87,6 +88,7 @@ struct Board { cards: Vec<Card> }
   "maxConcurrentCards": 1,
   "maxAttemptsPerCard": 3,
   "maxContinuationsPerTurn": 50,
+  "maxErrorRetriesPerCard": 3,      // 执行失败重试次数上限；与 maxAttemptsPerCard 语义分离
   "defaultWorkingDir": null,         // 新建卡片时的默认工作目录
   "analyzePrompt": null,             // null 时用内置默认
   "implementPrompt": null
@@ -140,6 +142,31 @@ struct Board { cards: Vec<Card> }
 
 这让单次实施 turn 可以持续工作，而不必靠反复重投来「续命」。
 
+### 6.5 执行失败处置
+
+`submit_root_turn` 失败时不再一律置 `blocked`，而是先按错误文本分类再决定处置：
+
+| 分类 | 文本特征 | 处置 |
+|---|---|---|
+| `Degenerate`（模型重复输出） | `degenerate repetition detected` | 回收 session，清空 `session_id` 并把 `attempt` 归零，退回 `ready`（下次领取重新走分析阶段） |
+| `Transient`（可重试） | `transport` / `timed out` / `connection reset` / `broken pipe` / `terminated by the server` / `status=429` / `5xx` 等 | 保留 session，退回 `ready`，下次领取直接续做实施 |
+| `Permanent`（不可重试） | `model not found` / `status=401` / `403` / `404` / `quota` 等 | 置 `blocked`，`note` 写入原始错误 |
+| 无法识别 | —— | 按 `Transient` 处理（保守：宁可多试几次） |
+
+重试预算由 `error_retries` 与 `maxErrorRetriesPerCard` 约束：每处置一次失败计数 +1，`error_retries >= maxErrorRetriesPerCard` 时无论分类一律置 `blocked`。它与 `attempt` 语义分离：`attempt` 约束正常推进的轮次，`error_retries` 约束异常重试。
+
+分类只能基于文本，因为宿主把 turn 失败作为 `HostError` 消息交给扩展。宿主文案变化会让分类静默降级为 `Transient`，代价是多烧几次预算再 `blocked`，不会损坏数据。
+
+退避：退回 `ready` 后由下一轮 tick 领取，天然隔一个 `pollIntervalSecs`，不额外 sleep。
+
+### 6.6 退化重复守卫（宿主侧）
+
+模型陷入「短时间内大量重复文字行」时，扩展看不到流式输出（`submit_root_turn` 只在 turn 结束后返回），所以守卫做在宿主流式层 `crates/astrcode-session/src/repetition_guard.rs`：最近 40 行非空正文的去重行数 ≤ 16 且平均行长 ≤ 32 字符，连续两个窗口满足即判定退化，中断当前生成并让 turn 以 `TurnError::DegenerateRepetition` 结束。
+
+错误文案以 `degenerate repetition detected` 开头（常量定义在 `repetition_guard.rs`，与错误文案的一致性由单测绑定）。扩展按字面量识别——内置插件只能依赖插件系统，无法引用宿主常量。
+
+守卫对所有会话生效，不只作用于看板；阈值刻意保守，误杀的代价是一次 turn 失败。
+
 ## 7. Agent 接口
 
 只暴露一个工具：
@@ -182,6 +209,9 @@ kanban_update_card(cardId: string, column: "done" | "blocked", note?: string)
 - 看板存储：往返序列化、原子写、损坏文件返回有类型错误。
 - 状态机：终态不可领取、用户不可写运行中列、尝试耗尽转 `blocked`。
 - 配置校验：合法配置通过、未知字段与越界值被拒。
+- 失败分类：真实错误原文（传输中断 / 连接重置 / 流被终止 / 模型不存在）与退化重复文本的表驱动用例；重试预算内外分支。
+- 旧看板兼容：缺少 `error_retries` 的 `board.json` 仍可读，缺字段取 0。
+- 退化重复守卫：循环短语样例必须触发，正常散文 / 长行 / 短输出不得触发。
 - 内置目录测试：`astrcode-kanban` 进入 `validate_bundled_extension_configs` 用例。
 
 ## 11. 已知风险
@@ -190,4 +220,6 @@ kanban_update_card(cardId: string, column: "done" | "blocked", note?: string)
 - **并发**：`maxConcurrentCards` 是唯一闸门。多张卡片指向同一工作目录时仍会互相踩工作区，本设计不做工作区互斥。
 - **空转**：agent 不调用 `kanban_update_card` 时，扩展会重投到 `maxAttemptsPerCard` 为止，期间持续消耗 token。
 - **可见性**：自动化失败只写 tracing 与卡片 `note`，用户需要主动看看板才能发现。
+- **分类脆弱**：失败分类基于错误文本，宿主文案一变就会静默降级为 `Transient`，最多烧完 `maxErrorRetriesPerCard` 次再 `blocked`。
+- **守卫边界**：退化重复守卫只覆盖正文重复，不覆盖工具调用重复（已有 `tool_deduplicator`）与 thinking 重复；无换行的长串重复也不在覆盖范围内。
 - **运行前提**：manifest 要求 `authenticated_http` 传输，只有 `astrcode server`（以及桌面端拉起的 sidecar）会加载本扩展；`tui` / `exec` / `acp` 用的是空传输 profile，扩展会被准入拒绝，自动化不会运行。无头跑自动化必须走 server 模式。

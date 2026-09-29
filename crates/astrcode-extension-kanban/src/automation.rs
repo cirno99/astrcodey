@@ -5,7 +5,9 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 use astrcode_extension_sdk::{
     extension::ExtensionTasks,
     host::{HostError, SessionControlClient},
-    wire::session::{HostCreateRootSessionRequest, HostRootSubmitTurnRequest},
+    wire::session::{
+        HostCreateRootSessionRequest, HostRootSubmitTurnRequest, HostSessionTargetRequest,
+    },
 };
 use parking_lot::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -13,6 +15,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     board::{BoardStore, BoardStoreError, Card, CardColumn, now_rfc3339},
     config::KanbanConfig,
+    failure::{self, CardAction},
     prompt,
 };
 
@@ -205,6 +208,91 @@ impl KanbanRuntime {
         Ok(())
     }
 
+    /// 退回待领取：保留 session，下一次领取直接续做实施阶段。
+    fn retry_card(&self, card_id: &str, note: String) -> Result<(), KanbanError> {
+        self.store.mutate(|board| {
+            let Some(card) = board.cards.iter_mut().find(|card| card.id == card_id) else {
+                return Err(BoardStoreError::CardNotFound(card_id.to_string()));
+            };
+            card.error_retries = card.error_retries.saturating_add(1);
+            card.column = CardColumn::Ready;
+            card.note = Some(note);
+            card.updated_at = now_rfc3339();
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    /// 换 session 重做：清空绑定与实施轮次，重新领取时会走分析阶段。
+    fn restart_card(&self, card_id: &str, note: String) -> Result<(), KanbanError> {
+        self.store.mutate(|board| {
+            let Some(card) = board.cards.iter_mut().find(|card| card.id == card_id) else {
+                return Err(BoardStoreError::CardNotFound(card_id.to_string()));
+            };
+            card.error_retries = card.error_retries.saturating_add(1);
+            card.session_id = None;
+            card.attempt = 0;
+            card.column = CardColumn::Ready;
+            card.note = Some(note);
+            card.updated_at = now_rfc3339();
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    /// 执行失败后的处置：按失败类型决定重试同一 session、换 session 重做，还是置为终态。
+    ///
+    /// 预算耗尽一律置为终态，所以 `restart_card` 不会无限重启同一张卡片。
+    async fn handle_failure(&self, card_id: &str, message: &str) -> Result<(), KanbanError> {
+        let kind = failure::classify_failure(message);
+        let (action, session_id) = self
+            .store
+            .read(|board| {
+                board.card(card_id).map(|card| {
+                    (
+                        failure::next_action(
+                            kind,
+                            card.error_retries,
+                            self.config.max_error_retries_per_card,
+                        ),
+                        card.session_id.clone(),
+                    )
+                })
+            })?
+            .ok_or_else(|| BoardStoreError::CardNotFound(card_id.to_string()))?;
+        let label = failure::kind_label(kind);
+
+        match action {
+            CardAction::Block => {
+                self.block_card(card_id, &format!("执行失败（{label}）: {message}"))
+            },
+            CardAction::RetrySameSession => self.retry_card(
+                card_id,
+                format!("上一次执行失败（{label}），已退回待领取: {message}"),
+            ),
+            CardAction::RestartSession => {
+                if let Some(session_id) = session_id
+                    && let Err(error) = self
+                        .session_control
+                        .dispose_root(HostSessionTargetRequest {
+                            target_session_id: session_id,
+                        })
+                        .await
+                {
+                    tracing::warn!(
+                        card_id = %card_id,
+                        error = %error,
+                        "kanban could not recycle the looping session"
+                    );
+                }
+                self.restart_card(
+                    card_id,
+                    format!("上一次执行陷入重复输出（{label}），已新建会话重做: {message}"),
+                )
+            },
+        }
+    }
+
     async fn submit(&self, session_id: &str, prompt: String) -> Result<(), KanbanError> {
         self.session_control
             .submit_root_turn(HostRootSubmitTurnRequest::new(session_id, prompt))
@@ -276,8 +364,12 @@ async fn run_card(runtime: Arc<KanbanRuntime>, card_id: String) {
     };
     if let Err(error) = runtime.execute_card(&card_id).await {
         tracing::warn!(card_id = %card_id, error = %error, "kanban card execution failed");
-        if let Err(block_error) = runtime.block_card(&card_id, &format!("执行失败: {error}")) {
-            tracing::warn!(card_id = %card_id, error = %block_error, "kanban card could not be blocked");
+        if let Err(handling_error) = runtime.handle_failure(&card_id, &error.to_string()).await {
+            tracing::warn!(
+                card_id = %card_id,
+                error = %handling_error,
+                "kanban card failure could not be handled"
+            );
         }
     }
 }

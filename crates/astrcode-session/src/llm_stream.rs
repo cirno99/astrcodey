@@ -9,7 +9,12 @@ use astrcode_core::{
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::{tool_types::StreamedToolCall, turn_context::TurnError, turn_publish::TurnEvents};
+use crate::{
+    repetition_guard::{DegenerateRepetition, RepetitionGuard},
+    tool_types::StreamedToolCall,
+    turn_context::TurnError,
+    turn_publish::TurnEvents,
+};
 
 /// 单次 LLM 响应允许的最大 tool call 数量。
 const MAX_TOOL_CALLS_PER_RESPONSE: usize = 64;
@@ -91,7 +96,7 @@ pub(crate) async fn consume_llm_stream(
             LlmEvent::RetryRecovered => {
                 consumer.publisher.live(LiveEventPayload::LlmRetryRecovered)
             },
-            LlmEvent::ContentDelta { delta } => consumer.handle_content_delta(delta),
+            LlmEvent::ContentDelta { delta } => consumer.handle_content_delta(delta)?,
             LlmEvent::ThinkingDelta { delta } => consumer.handle_thinking_delta(delta),
             LlmEvent::ToolCallStart {
                 call_id,
@@ -120,6 +125,7 @@ struct StreamConsumer<'a> {
     tool_calls: Vec<StreamedToolCall>,
     message_started: bool,
     captured_usage: Option<LlmTokenUsage>,
+    repetition: RepetitionGuard,
 }
 
 impl<'a> StreamConsumer<'a> {
@@ -132,20 +138,38 @@ impl<'a> StreamConsumer<'a> {
             tool_calls: Vec::new(),
             message_started: false,
             captured_usage: None,
+            repetition: RepetitionGuard::new(),
         }
     }
 
-    fn handle_content_delta(&mut self, delta: String) {
+    fn handle_content_delta(&mut self, delta: String) -> Result<(), TurnError> {
         ensure_assistant_message_started(
             self.publisher,
             &self.message_id,
             &mut self.message_started,
         );
         self.current_text.push_str(&delta);
+        let repetition = self.repetition.observe(&delta);
         self.publisher.live(LiveEventPayload::AssistantTextDelta {
             message_id: self.message_id.clone(),
             delta,
         });
+        let Some(DegenerateRepetition {
+            distinct_lines,
+            window_lines,
+        }) = repetition
+        else {
+            return Ok(());
+        };
+        tracing::warn!(
+            distinct_lines,
+            window_lines,
+            "assistant text degenerated into repeated lines; aborting the stream"
+        );
+        Err(TurnError::DegenerateRepetition {
+            distinct_lines,
+            window_lines,
+        })
     }
 
     fn reset_for_retry(&mut self) {
@@ -153,6 +177,7 @@ impl<'a> StreamConsumer<'a> {
         self.reasoning_content.clear();
         self.tool_calls.clear();
         self.captured_usage = None;
+        self.repetition.reset();
         if self.message_started {
             self.publisher
                 .live(LiveEventPayload::AssistantMessageReset {

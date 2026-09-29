@@ -9,6 +9,7 @@ pub mod payload;
 mod perf_snapshot;
 pub(crate) mod permission;
 pub(crate) mod projection_context;
+pub(crate) mod repetition_guard;
 pub(crate) mod runtime_stability;
 mod session;
 mod session_error;

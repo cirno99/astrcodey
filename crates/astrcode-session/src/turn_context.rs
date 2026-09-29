@@ -166,6 +166,16 @@ pub enum TurnError {
     CompactExhausted,
     #[error("LLM stream ended unexpectedly")]
     StreamEndedUnexpectedly,
+    /// 正文退化成大量重复行，守卫主动中断生成；文案前缀由
+    /// [`crate::repetition_guard::DEGENERATE_REPETITION_MARKER`] 固定，二者由单测绑定。
+    #[error(
+        "{}: {window_lines} lines contained only {distinct_lines} distinct lines",
+        crate::repetition_guard::DEGENERATE_REPETITION_MARKER
+    )]
+    DegenerateRepetition {
+        distinct_lines: usize,
+        window_lines: usize,
+    },
     #[error("turn aborted")]
     Aborted,
     #[error("input blocked by extension: {reason}")]

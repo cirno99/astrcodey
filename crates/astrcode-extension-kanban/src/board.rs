@@ -52,6 +52,9 @@ pub struct Card {
     pub session_id: Option<String>,
     #[serde(default)]
     pub attempt: u32,
+    /// 执行失败（不含正常轮次推进）的重试次数；与 `attempt` 语义分离，见 `failure` 模块。
+    #[serde(default)]
+    pub error_retries: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     pub created_at: String,
@@ -69,6 +72,7 @@ impl Card {
             working_dir,
             session_id: None,
             attempt: 0,
+            error_retries: 0,
             note: None,
             created_at: now.clone(),
             updated_at: now,
@@ -232,6 +236,36 @@ mod tests {
             .read(|board| board.cards.len())
             .expect_err("corrupt board must not degrade into an empty board");
         assert!(matches!(error, BoardStoreError::Decode(_)));
+    }
+
+    /// 早于 `error_retries` 的看板文件必须仍可读，缺字段取 0。
+    #[test]
+    fn board_without_error_retries_still_loads() {
+        let (dir, store) = store();
+        let legacy = serde_json::json!({
+            "cards": [{
+                "id": "legacy-card",
+                "title": "旧卡片",
+                "body": "",
+                "column": "ready",
+                "workingDir": "/tmp/project",
+                "attempt": 1,
+                "createdAt": "2026-01-01T00:00:00+00:00",
+                "updatedAt": "2026-01-01T00:00:00+00:00"
+            }]
+        });
+        fs::write(
+            dir.path().join(BOARD_FILE),
+            serde_json::to_vec_pretty(&legacy).unwrap(),
+        )
+        .unwrap();
+
+        let card = store
+            .read(|board| board.card("legacy-card").cloned())
+            .unwrap()
+            .expect("旧看板必须仍可读");
+        assert_eq!(card.error_retries, 0);
+        assert_eq!(card.attempt, 1);
     }
 
     #[test]
