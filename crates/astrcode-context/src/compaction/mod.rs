@@ -260,13 +260,9 @@ fn can_split_after(messages: &[LlmMessage], split_after: usize) -> bool {
             return false;
         }
     }
-    if messages
+    !messages
         .get(split_after + 1)
         .is_some_and(|next| next.role == LlmRole::Tool)
-    {
-        return false;
-    }
-    true
 }
 
 fn can_compact_before(messages: &[LlmMessage], keep_start: usize) -> bool {
