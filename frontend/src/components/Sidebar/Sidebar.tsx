@@ -676,6 +676,8 @@ export default function Sidebar({
 
       {showNewProject && (
         <NewProjectModal
+          defaultWorkingDir={activeWorkingDir ?? ''}
+          extraPathCandidates={sessions.map((session) => session.workingDir)}
           onConfirm={handleNewProject}
           onCancel={() => setShowNewProject(false)}
         />
