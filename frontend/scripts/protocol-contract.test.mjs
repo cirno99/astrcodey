@@ -176,6 +176,45 @@ const approvalResolved = decodeConversationStreamEnvelope({
 assert.equal(approvalResolved.delta.kind, 'toolApprovalResolved')
 assert.equal(approvalResolved.delta.decision, 'allow_once')
 
+const metrics = decodeConversationStreamEnvelope({
+  sessionId: 'session-1',
+  cursor: { value: '13' },
+  delta: {
+    kind: 'metricsUpdated',
+    metrics: {
+      requests: 3,
+      promptTokens: 12_000,
+      cachedTokens: 9_000,
+      cacheCreationTokens: 0,
+      outputTokens: 800,
+      reasoningOutputTokens: 120,
+      contextTokens: 4_096,
+      modelContextWindow: 200_000,
+      outputTokensPerSecond: 42.5,
+    },
+  },
+})
+assert.equal(metrics.delta.kind, 'metricsUpdated')
+assert.equal(metrics.delta.metrics.requests, 3)
+assert.equal(metrics.delta.metrics.cachedTokens, 9_000)
+assert.equal(metrics.delta.metrics.contextTokens, 4_096)
+assert.equal(metrics.delta.metrics.outputTokensPerSecond, 42.5)
+
+const metricsWithoutSamples = decodeConversationDelta({
+  kind: 'metricsUpdated',
+  metrics: {
+    requests: 0,
+    promptTokens: 0,
+    cachedTokens: 0,
+    cacheCreationTokens: 0,
+    outputTokens: 0,
+    reasoningOutputTokens: 0,
+  },
+})
+assert.equal(metricsWithoutSamples.kind, 'metricsUpdated')
+assert.equal(metricsWithoutSamples.metrics.contextTokens, undefined)
+assert.equal(metricsWithoutSamples.metrics.outputTokensPerSecond, undefined)
+
 assert.throws(
   () =>
     decodeConversationStreamEnvelope({

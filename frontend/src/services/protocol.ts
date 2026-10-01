@@ -15,6 +15,7 @@ import type {
   ConversationCursor,
   ConversationDelta,
   ConversationItemsPage,
+  ConversationMetrics,
   ConversationSnapshot,
   ConversationState,
   ConversationStreamEnvelope,
@@ -249,9 +250,25 @@ export function decodeConversationControlState(
   }
 }
 
+function decodeConversationMetrics(value: unknown): ConversationMetrics {
+  const object = decodeObject(value, 'conversation metrics')
+  return {
+    requests: requiredNumber(object, 'requests'),
+    promptTokens: requiredNumber(object, 'promptTokens'),
+    cachedTokens: requiredNumber(object, 'cachedTokens'),
+    cacheCreationTokens: requiredNumber(object, 'cacheCreationTokens'),
+    outputTokens: requiredNumber(object, 'outputTokens'),
+    reasoningOutputTokens: requiredNumber(object, 'reasoningOutputTokens'),
+    contextTokens: optionalNumber(object, 'contextTokens'),
+    modelContextWindow: optionalNumber(object, 'modelContextWindow'),
+    outputTokensPerSecond: optionalNumber(object, 'outputTokensPerSecond'),
+  }
+}
+
 export function decodeConversationDelta(value: unknown): ConversationDelta {
   const object = decodeObject(value, 'conversation delta')
-  const kind = requiredString(object, 'kind')
+  // 收窄成协议联合类型：default 分支因此拿到 `never`，新增 kind 却漏写分支时编译期报错。
+  const kind = requiredString(object, 'kind') as ConversationDelta['kind']
 
   switch (kind) {
     case 'appendBlock':
@@ -342,8 +359,12 @@ export function decodeConversationDelta(value: unknown): ConversationDelta {
         callId: requiredString(object, 'callId'),
         decision: decodeApprovalDecision(object.decision),
       }
-    default:
-      throw new ProtocolDecodeError(`invalid delta kind ${kind}`)
+    case 'metricsUpdated':
+      return { kind, metrics: decodeConversationMetrics(object.metrics) }
+    default: {
+      const unhandled: never = kind
+      throw new ProtocolDecodeError(`invalid delta kind ${String(unhandled)}`)
+    }
   }
 }
 
