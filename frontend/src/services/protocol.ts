@@ -259,6 +259,9 @@ function decodeConversationMetrics(value: unknown): ConversationMetrics {
     cacheCreationTokens: requiredNumber(object, 'cacheCreationTokens'),
     outputTokens: requiredNumber(object, 'outputTokens'),
     reasoningOutputTokens: requiredNumber(object, 'reasoningOutputTokens'),
+    lastPromptTokens: optionalNumber(object, 'lastPromptTokens'),
+    lastCachedTokens: optionalNumber(object, 'lastCachedTokens'),
+
     contextTokens: optionalNumber(object, 'contextTokens'),
     modelContextWindow: optionalNumber(object, 'modelContextWindow'),
     outputTokensPerSecond: optionalNumber(object, 'outputTokensPerSecond'),

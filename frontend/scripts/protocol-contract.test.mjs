@@ -191,6 +191,8 @@ const metrics = decodeConversationStreamEnvelope({
       contextTokens: 4_096,
       modelContextWindow: 200_000,
       outputTokensPerSecond: 42.5,
+      lastPromptTokens: 11_500,
+      lastCachedTokens: 8_800,
     },
   },
 })
@@ -199,6 +201,9 @@ assert.equal(metrics.delta.metrics.requests, 3)
 assert.equal(metrics.delta.metrics.cachedTokens, 9_000)
 assert.equal(metrics.delta.metrics.contextTokens, 4_096)
 assert.equal(metrics.delta.metrics.outputTokensPerSecond, 42.5)
+// 最近一次请求的读数决定 UI 里「输入」与「缓存命中」两项，漏解会让它们整段消失。
+assert.equal(metrics.delta.metrics.lastPromptTokens, 11_500)
+assert.equal(metrics.delta.metrics.lastCachedTokens, 8_800)
 
 const metricsWithoutSamples = decodeConversationDelta({
   kind: 'metricsUpdated',
@@ -214,6 +219,9 @@ const metricsWithoutSamples = decodeConversationDelta({
 assert.equal(metricsWithoutSamples.kind, 'metricsUpdated')
 assert.equal(metricsWithoutSamples.metrics.contextTokens, undefined)
 assert.equal(metricsWithoutSamples.metrics.outputTokensPerSecond, undefined)
+// 尚无请求时服务端不发送单次读数，UI 据此整项不渲染，而不是显示 0。
+assert.equal(metricsWithoutSamples.metrics.lastPromptTokens, undefined)
+assert.equal(metricsWithoutSamples.metrics.lastCachedTokens, undefined)
 
 assert.throws(
   () =>

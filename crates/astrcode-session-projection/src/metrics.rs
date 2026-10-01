@@ -22,6 +22,13 @@ pub struct SessionMetrics {
     pub output_tokens: u64,
     /// 其中推理 token 数。
     pub reasoning_output_tokens: u64,
+    /// 最近一次模型请求归一化后的完整 prompt token 数；尚无请求时为 `None`。
+    ///
+    /// 这是 provider 账单里「输入」一栏的同口径值：每轮 step 都会重发整段历史，
+    /// 累计求和会随请求数线性膨胀，只有单次请求的读数才是当前上下文大小。
+    pub last_prompt_tokens: Option<u64>,
+    /// 最近一次模型请求中命中缓存读取的 token 数。
+    pub last_cached_tokens: Option<u64>,
     /// 最近一次响应结束后占用的上下文 token；上下文身份变化时清空。
     pub context_tokens: Option<usize>,
     /// 与 `context_tokens` 同一次上报的上下文窗口大小。
@@ -111,6 +118,10 @@ impl SessionMetrics {
         self.requests = self.requests.saturating_add(1);
         self.prompt_tokens = self.prompt_tokens.saturating_add(prompt.full);
         self.cached_tokens = self.cached_tokens.saturating_add(prompt.cached);
+        // 单次读数直接覆盖：它描述最近一次请求，不是需要累加的计数。
+        self.last_prompt_tokens = Some(prompt.full);
+        self.last_cached_tokens = Some(prompt.cached);
+
         self.cache_creation_tokens = self
             .cache_creation_tokens
             .saturating_add(usage.cache_creation_input_tokens.unwrap_or_default());
@@ -230,6 +241,35 @@ mod tests {
         assert_eq!(metrics.cache_hit_rate(), Some(0.75));
         // 上下文读数是最近一次响应后的占用：input + 缓存读取 + 缓存写入 + output。
         assert_eq!(metrics.context_tokens, Some(105));
+        // 单次读数同样按样本自身语义归一化，且只保留最后一个样本。
+        assert_eq!(metrics.last_prompt_tokens, Some(100));
+        assert_eq!(metrics.last_cached_tokens, Some(70));
+    }
+
+    #[test]
+    fn last_request_reading_overwrites_instead_of_accumulating() {
+        let mut metrics = SessionMetrics::default();
+        let turn_id = TurnId::new("turn-1");
+
+        for (seq, input, cached) in [(1u64, 100u64, 80u64), (2, 1_000, 900)] {
+            apply_event(
+                &stored(
+                    seq,
+                    Some(turn_id.clone()),
+                    DurableEventPayload::TokenUsageRecorded {
+                        usage: usage(input, cached, 10),
+                        model_context_window: 1_000_000,
+                    },
+                ),
+                &mut metrics,
+            );
+        }
+
+        // 单次读数描述最近一次请求，直接覆盖；累计值照旧求和。
+        assert_eq!(metrics.last_prompt_tokens, Some(1_000));
+        assert_eq!(metrics.last_cached_tokens, Some(900));
+        assert_eq!(metrics.prompt_tokens, 1_100);
+        assert_eq!(metrics.cached_tokens, 980);
     }
 
     #[test]

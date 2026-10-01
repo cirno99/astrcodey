@@ -427,7 +427,16 @@ pub struct ConversationMetricsDto {
     pub output_tokens: u64,
     /// 其中推理 token 数。
     pub reasoning_output_tokens: u64,
+    /// 最近一次模型请求归一化后的完整 prompt token 数；尚无请求时为空。
+    ///
+    /// 与 provider 账单里「输入」一栏同口径：单次请求重发的整段历史，不是累计值。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_prompt_tokens: Option<u64>,
+    /// 最近一次模型请求中命中缓存读取的 token 数。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_cached_tokens: Option<u64>,
     /// 最近一次响应结束后的上下文占用；上下文身份变化时为空。
+
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_tokens: Option<u64>,
     /// 与 `context_tokens` 同一次上报的上下文窗口大小。

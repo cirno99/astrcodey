@@ -31,6 +31,16 @@ outputTokens: number,
  */
 reasoningOutputTokens: number,
 /**
+ * 最近一次模型请求归一化后的完整 prompt token 数；尚无请求时为空。
+ *
+ * 与 provider 账单里「输入」一栏同口径：单次请求重发的整段历史，不是累计值。
+ */
+lastPromptTokens?: number | null,
+/**
+ * 最近一次模型请求中命中缓存读取的 token 数。
+ */
+lastCachedTokens?: number | null,
+/**
  * 最近一次响应结束后的上下文占用；上下文身份变化时为空。
  */
 contextTokens?: number | null,
