@@ -124,9 +124,17 @@ pub struct ToolCatalogDiagnostic {
     pub message: String,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ToolCatalogMode {
+    /// Initial session prompts must not wait for external tool discovery.
+    RegisteredOnly,
+    WithDiscovery,
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ToolCatalogScope {
     pub working_dir: String,
+    pub mode: ToolCatalogMode,
 }
 
 #[derive(Clone)]

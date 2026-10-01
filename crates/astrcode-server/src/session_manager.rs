@@ -724,7 +724,7 @@ impl SessionManager {
 
     /// Fork 一个已有会话，创建新 session 并复制 fork 点之前的消息前缀。
     ///
-    /// fork 保证新 session 发送给 LLM 的 system prompt + 消息前缀与源 session 完全一致，
+    /// 已有消息的 fork 保留源 session 的 system prompt + 消息前缀，
     /// 从而让 provider 侧的 KV 缓存（prompt cache）自动命中。
     ///
     /// - `source_id`: 源会话 ID
@@ -770,7 +770,13 @@ impl SessionManager {
                 text: source_model.system_prompt.text.clone(),
                 fingerprint: source_model.system_prompt.fingerprint.clone(),
                 extra_system_prompt: source_model.system_prompt.extra.clone(),
-                source: astrcode_core::event::SystemPromptSource::Inherited,
+                // 空 transcript 的 fork 没有需要保住的 prompt cache 前缀，标记为 Native
+                // 让首轮重新构建提示词，从而拿到动态发现的工具。
+                source: if transcript_messages.is_empty() {
+                    astrcode_core::event::SystemPromptSource::Native
+                } else {
+                    astrcode_core::event::SystemPromptSource::Inherited
+                },
             },
             source_cursor: fork_cursor,
             first_user_message,

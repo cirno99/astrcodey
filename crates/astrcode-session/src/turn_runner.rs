@@ -83,6 +83,8 @@ struct StepHooks<'a> {
 
 /// 连续相同 `input_tokens` 达到该步数时告警(frozen provider 视图检测)。
 const FROZEN_INPUT_TOKENS_STREAK_WARN: u32 = 3;
+/// 模型因输出额度耗尽而结束时 provider 返回的 finish_reason。
+const FINISH_REASON_LENGTH: &str = "length";
 
 /// LLM 请求被消费前抓取的快照，供 outcome 后续阶段使用。
 struct LlmRequestSnapshot {
@@ -351,6 +353,28 @@ impl TurnLoop {
                 },
                 Err(error) => return Err(error),
             };
+
+        // 思考耗尽输出额度时 provider 以 length 结束且没有正文：此时没有任何可提交的
+        // assistant 内容，必须清掉未完成的思考预览并走响应式压缩重试，否则用户拿到空回合。
+        if let StreamOutcome::Complete {
+            text,
+            finish_reason,
+            message_id,
+            message_started,
+            ..
+        } = &outcome
+            && text.is_empty()
+            && finish_reason == FINISH_REASON_LENGTH
+        {
+            if *message_started {
+                publisher.live(LiveEventPayload::AssistantMessageReset {
+                    message_id: message_id.clone(),
+                });
+            }
+            return self
+                .recover_or_fail(extension_runner, state, publisher)
+                .await;
+        }
 
         let hooks = StepHooks {
             extension_runner,
