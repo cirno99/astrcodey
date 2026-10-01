@@ -31,15 +31,15 @@ export function AssistantMessageContent({
     : (streamingParts ?? staticParts ?? { visibleText: '', thinkingBlocks: [] })
 
   return (
-    <div className="relative min-w-0 max-w-full overflow-wrap-anywhere bg-transparent py-2 text-text-primary prose-chat">
+    <div className="relative min-w-0 max-w-full wrap-anywhere bg-transparent py-2 text-text-primary prose-chat">
       {showThinking &&
         assistantParts.thinkingBlocks.map((thinkingBlock, index) => (
           <details
             key={`thinking-${index}`}
-            className="mb-3.5 bg-transparent border-none rounded-0 overflow-visible group"
+            className="mb-3.5 bg-transparent border-none rounded-none overflow-visible group"
             open={streaming}
           >
-            <summary className="inline-flex items-center gap-2 py-1 min-h-[24px] cursor-pointer select-none bg-transparent border-none rounded-0 text-text-secondary/80 transition-opacity duration-150 ease-out text-[13px] font-medium list-none [&::-webkit-details-marker]:hidden hover:opacity-100">
+            <summary className="inline-flex items-center gap-2 py-1 min-h-[24px] cursor-pointer select-none bg-transparent border-none rounded-none text-text-secondary/80 transition-opacity duration-150 ease-out text-[13px] font-medium list-none [&::-webkit-details-marker]:hidden hover:opacity-100">
               <span className="w-4 h-4 inline-flex items-center justify-center shrink-0 text-[13px] text-text-secondary/70">
                 <svg
                   width="15"
@@ -74,7 +74,7 @@ export function AssistantMessageContent({
                 </svg>
               </span>
             </summary>
-            <div className="mb-3 ml-2 mt-2 border-l-2 border-border pl-4 overflow-wrap-anywhere text-[13.5px] leading-relaxed text-text-secondary/80 prose-chat">
+            <div className="mb-3 ml-2 mt-2 border-l-2 border-border pl-4 wrap-anywhere text-[13.5px] leading-relaxed text-text-secondary/80 prose-chat">
               {streaming ? (
                 <StreamingMarkdown
                   text={thinkingBlock}

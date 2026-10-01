@@ -102,6 +102,7 @@
     'Cascadia Code', 'Fira Code', 'Consolas', 'SF Mono', Menlo, monospace;
   --animate-blink: blink 1s step-end infinite;
   --animate-message-enter: fadeSlideUp 320ms cubic-bezier(0.2, 1, 0.32, 1);
+  --animate-popover-in: popoverIn 120ms cubic-bezier(0.2, 1, 0.32, 1);
 }
 
 *,
@@ -120,8 +121,8 @@
   --border: rgba(92, 83, 119, 0.1);
   --border-strong: rgba(92, 83, 119, 0.2);
   --text-primary: #575174;
-  --text-secondary: #77718f;
-  --text-muted: #aaa4b7;
+  --text-secondary: #656079;
+  --text-muted: #6c6874;
   --accent: #655d8a;
   --accent-strong: #575079;
   --accent-soft: #ece8f1;
@@ -191,7 +192,7 @@
   --border-strong: rgba(255, 255, 255, 0.16);
   --text-primary: #f1f1f1;
   --text-secondary: #b7b7b7;
-  --text-muted: #858585;
+  --text-muted: #949494;
   --accent: #a99fd0;
   --accent-strong: #bdb4e0;
   --accent-soft: rgba(169, 159, 208, 0.16);
@@ -282,6 +283,17 @@ body,
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

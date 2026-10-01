@@ -41,8 +41,10 @@ export function Dropdown({
           role="menu"
           aria-label={label}
           className={cn(
-            'absolute top-full z-50 mt-1 min-w-[220px] max-w-[360px] rounded-lg border border-border bg-surface p-2 shadow-surface-lg',
-            align === 'right' ? 'right-0' : 'left-0',
+            'absolute top-full z-50 mt-1 min-w-[220px] max-w-[360px] rounded-lg border border-border bg-surface p-2 shadow-surface-lg animate-popover-in motion-reduce:animate-none',
+            align === 'right'
+              ? 'right-0 origin-top-right'
+              : 'left-0 origin-top-left',
             className
           )}
         >

@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "generate:protocol": "cargo run --manifest-path ../Cargo.toml -p astrcode-protocol --example generate-typescript --features typescript",
     "check:protocol": "cargo run --manifest-path ../Cargo.toml -p astrcode-protocol --example generate-typescript --features typescript -- --check",
+    "check:tailwind-classes": "node scripts/tailwind-classes.test.mjs",
     "test:contract": "esbuild src/services/protocol.ts --bundle --format=esm --outfile=../target/frontend-contract/services/protocol.js && node scripts/protocol-contract.test.mjs",
     "test:assistant-run": "esbuild src/components/Chat/assistantRunModel.ts src/components/Chat/tools/askUser.ts --bundle --format=esm --outdir=../target/frontend-assistant-run && node scripts/assistant-run-model.test.mjs",
     "test:conversation-history": "esbuild src/store/conversationHistory.ts --bundle --format=esm --outdir=../target/frontend-conversation-history && node scripts/conversation-history.test.mjs",
@@ -28,7 +29,7 @@
     "test:settings-model-options": "esbuild src/components/Settings/settingsSupport.ts --bundle --platform=node --format=esm --outfile=../target/frontend-settings-model-options/settingsSupport.js && node scripts/settings-model-options.test.mjs",
     "test:kanban-calendar": "esbuild src/components/Kanban/calendar.ts src/components/Kanban/columns.ts src/components/Kanban/projectGroups.ts --bundle --platform=node --format=esm --outdir=../target/frontend-kanban-calendar && node scripts/kanban-calendar.test.mjs",
     "test:kanban-selection": "esbuild src/components/Kanban/selection.ts --bundle --platform=node --format=esm --outfile=../target/frontend-kanban-selection/selection.js && node scripts/kanban-selection.test.mjs",
-    "check": "npm run check:protocol && npm run typecheck && npm run lint && npm run format:check && npm run test:contract && npm run test:assistant-run && npm run test:conversation-history && npm run test:streaming-cache && npm run test:tool-renderers && npm run test:delta && npm run test:session-stream && npm run test:project-path-history && npm run test:kanban-calendar && npm run test:kanban-selection && npm run test:settings-model-options"
+    "check": "npm run check:protocol && npm run typecheck && npm run lint && npm run format:check && npm run check:tailwind-classes && npm run test:contract && npm run test:assistant-run && npm run test:conversation-history && npm run test:streaming-cache && npm run test:tool-renderers && npm run test:delta && npm run test:session-stream && npm run test:project-path-history && npm run test:kanban-calendar && npm run test:kanban-selection && npm run test:settings-model-options"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.8",

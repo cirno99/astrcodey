@@ -99,7 +99,7 @@ export default function CommandSelector({
           加载中...
         </div>
       ) : filteredOptions.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-text-faint">
+        <div className="px-3 py-2 text-xs text-text-muted">
           没有找到匹配「{query}」的命令
         </div>
       ) : (

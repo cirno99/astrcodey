@@ -121,7 +121,7 @@ function ActivitySummaryContent({ activity }: { activity: ToolActivity }) {
           : 'text-text-secondary'
       )}
     >
-      <span className="min-w-0 overflow-wrap-anywhere font-medium text-accent">
+      <span className="min-w-0 wrap-anywhere font-medium text-accent">
         {activity.label}
       </span>
       {activity.insertions != null ? (
@@ -189,7 +189,7 @@ function ProcessSummary({
   return (
     <details
       className={cn(
-        'group bg-transparent border-none rounded-0 overflow-visible',
+        'group bg-transparent border-none rounded-none overflow-visible',
         hasFollowingContent ? 'mb-2.5' : 'my-2.5'
       )}
       open={open}
@@ -323,7 +323,7 @@ function AssistantRunMessage({
       )}
     >
       <div className="min-w-0 flex-1 pt-0.5">
-        <div className="relative min-w-0 max-w-full overflow-wrap-anywhere bg-transparent py-2 text-text-primary prose-chat">
+        <div className="relative min-w-0 max-w-full wrap-anywhere bg-transparent py-2 text-text-primary prose-chat">
           {runModel.segments.map((segment, index) => {
             if (segment.type === 'content') {
               return (

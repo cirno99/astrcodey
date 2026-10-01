@@ -43,7 +43,7 @@ class MarkdownBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <pre className="m-0 whitespace-pre-wrap overflow-wrap-anywhere font-inherit text-inherit">
+        <pre className="m-0 whitespace-pre-wrap wrap-anywhere font-[inherit] text-inherit">
           {this.props.fallback}
         </pre>
       )
@@ -68,7 +68,7 @@ export const MarkdownContent = memo(function MarkdownContent({
   if (deferredText.length > MARKDOWN_TEXT_LIMIT_CHARS) {
     return (
       <MarkdownBoundary fallback={deferredText}>
-        <pre className="m-0 whitespace-pre-wrap overflow-wrap-anywhere font-inherit text-inherit">
+        <pre className="m-0 whitespace-pre-wrap wrap-anywhere font-[inherit] text-inherit">
           {deferredText}
         </pre>
       </MarkdownBoundary>

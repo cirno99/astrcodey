@@ -149,7 +149,7 @@ export default function ModelSelector({
       </button>
 
       {open && (
-        <div className="absolute bottom-[calc(100%+8px)] left-0 z-[9999] flex w-[240px] origin-bottom-left flex-col rounded-2xl border border-border bg-surface shadow-soft animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute bottom-[calc(100%+8px)] left-0 z-[9999] flex w-[240px] origin-bottom-left flex-col rounded-2xl border border-border bg-surface shadow-soft animate-popover-in motion-reduce:animate-none">
           <div className="p-1.5 border-b border-border">
             <input
               ref={searchInputRef}

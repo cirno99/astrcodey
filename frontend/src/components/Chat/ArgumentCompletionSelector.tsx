@@ -101,7 +101,7 @@ export default function ArgumentCompletionSelector({
           加载中...
         </div>
       ) : items.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-text-faint">无补全建议</div>
+        <div className="px-3 py-2 text-xs text-text-muted">无补全建议</div>
       ) : (
         <>
           {items.map((item, index) => (
@@ -131,7 +131,7 @@ export default function ArgumentCompletionSelector({
             </button>
           ))}
           {truncated && (
-            <div className="px-3 py-1.5 text-[11px] text-text-faint">
+            <div className="px-3 py-1.5 text-[11px] text-text-muted">
               结果过多，已截断
             </div>
           )}

@@ -94,7 +94,7 @@ function DetailRow({
 
 function DetailValue({ children }: { children: ReactNode }) {
   return (
-    <div className="min-w-0 overflow-wrap-anywhere rounded bg-transparent font-mono text-[12px] leading-relaxed text-text-secondary">
+    <div className="min-w-0 wrap-anywhere rounded bg-transparent font-mono text-[12px] leading-relaxed text-text-secondary">
       {children}
     </div>
   )
@@ -339,9 +339,7 @@ function ToolCallBlock({
       >
         <Icon name={summaryIcon} size={15} className="shrink-0 opacity-85" />
         {summaryContent ? (
-          <span className="min-w-0 overflow-wrap-anywhere">
-            {summaryContent}
-          </span>
+          <span className="min-w-0 wrap-anywhere">{summaryContent}</span>
         ) : (
           <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
             工具调用 {toolName}
