@@ -329,10 +329,7 @@ async fn disabled_bundled_extension_configs_validate_before_commit() {
     .unwrap();
     let initial_effective = manager.read_effective();
 
-    for (extension_id, invalid_config) in [
-        ("astrcode.memory", json!({ "maxContexts": "many" })),
-        ("astrcode-channels", json!({ "unexpected": true })),
-    ] {
+    for (extension_id, invalid_config) in [("astrcode.memory", json!({ "maxContexts": "many" }))] {
         let result: Result<(), ConfigUpdateError<()>> = manager
             .update_and_save(|candidate| {
                 candidate

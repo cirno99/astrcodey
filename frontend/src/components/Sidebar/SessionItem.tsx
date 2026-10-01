@@ -2,6 +2,7 @@ import { memo, useState, useCallback, useEffect, useRef } from 'react'
 import type { SessionListItem } from '../../services/types'
 import { cn } from '../../lib/utils'
 import { PHASE_BG_CLASS } from '../../lib/styles'
+import { Icon } from '../ui/Icon'
 
 interface SessionItemProps {
   session: SessionListItem
@@ -71,7 +72,7 @@ function SessionItem({
       <button
         type="button"
         className={cn(
-          'flex w-full items-center gap-2.5 rounded-lg py-2 text-left outline-none transition-all duration-150 ease-out border',
+          'flex w-full items-center gap-2.5 rounded-lg py-2 text-left outline-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out border focus-visible:shadow-focus-accent',
           isActive
             ? 'bg-surface border-border shadow-soft border-l-[3px] border-l-accent-strong pl-1.75 pr-2.5'
             : 'border-transparent px-2.5 hover:bg-surface-muted'
@@ -133,17 +134,7 @@ function SessionItem({
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-text-secondary transition-[background-color,color] duration-100 ease-out hover:bg-danger-soft hover:text-danger"
               onClick={handleRequestDelete}
             >
-              <svg
-                className="h-3.5 w-3.5"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 5h12M7 5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V5m2 0v10.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 6 15.5V5h8z" />
-              </svg>
+              <Icon name="trash" size={14} />
               删除会话
             </button>
           )}

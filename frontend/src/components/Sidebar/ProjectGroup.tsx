@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { SessionListItem } from '../../services/types'
 import { cn } from '../../lib/utils'
+import { Icon } from '../ui/Icon'
 import SessionItem from './SessionItem'
 
 interface ProjectGroupProps {
@@ -81,7 +82,7 @@ function ProjectGroup({
       <button
         type="button"
         className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left outline-none border transition-all duration-150 ease-out',
+          'flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left outline-none border transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:shadow-focus-accent',
           isFolderActive
             ? 'bg-accent-soft text-accent-strong border-accent-strong/20 shadow-xs font-semibold'
             : 'border-transparent text-text-secondary hover:bg-surface-muted'
@@ -95,15 +96,7 @@ function ProjectGroup({
             isFolderActive ? 'text-accent-strong' : 'text-text-secondary'
           )}
         >
-          <svg className="h-3.5 w-3.5" viewBox="0 0 20 20">
-            <path
-              d="M2.5 5.75A1.75 1.75 0 0 1 4.25 4h4.03c.46 0 .9.18 1.23.5l1.02 1c.32.3.74.47 1.18.47h4.04A1.75 1.75 0 0 1 17.5 7.72v6.53A1.75 1.75 0 0 1 15.75 16H4.25A1.75 1.75 0 0 1 2.5 14.25V5.75Z"
-              fill="none"
-              stroke="currentColor"
-              strokeLinejoin="round"
-              strokeWidth="1.4"
-            />
-          </svg>
+          <Icon name="folder" size={14} />
         </span>
         <span
           className={cn(
@@ -117,23 +110,12 @@ function ProjectGroup({
         </span>
         <span
           className={cn(
-            'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center transition-all duration-150 ease-out',
+            'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center transition-transform duration-150 ease-out',
             isFolderActive ? 'text-accent-strong' : 'text-text-secondary',
             isExpanded && 'rotate-90'
           )}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
+          <Icon name="chevron-right" size={14} />
         </span>
       </button>
       {isExpanded && (
@@ -183,17 +165,7 @@ function ProjectGroup({
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-text-secondary transition-[background-color,color] duration-100 ease-out hover:bg-danger-soft hover:text-danger"
               onClick={() => setConfirmDelete(true)}
             >
-              <svg
-                className="h-3.5 w-3.5"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 5h12M7 5V3.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V5m2 0v10.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 6 15.5V5h8z" />
-              </svg>
+              <Icon name="trash" size={14} />
               删除项目
             </button>
           )}

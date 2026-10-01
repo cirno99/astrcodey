@@ -208,7 +208,6 @@ version = "0.3.16"
 dependencies = [
  "astrcode-extension-agent-tools",
  "astrcode-extension-ask-user",
- "astrcode-extension-channels",
  "astrcode-extension-coding",
  "astrcode-extension-goal",
  "astrcode-extension-kanban",
@@ -334,24 +333,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tracing",
-]
-
-[[package]]
-name = "astrcode-extension-channels"
-version = "0.3.16"
-dependencies = [
- "astrcode-extension-sdk",
- "async-trait",
- "parking_lot",
- "reqwest",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-util",
  "tracing",
 ]
 

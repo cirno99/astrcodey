@@ -12,9 +12,9 @@ export function StatusIndicatorDot({
   status: ToolCallStatus
   pendingApproval?: boolean
 }) {
-  let dotColor = 'bg-accent-strong animate-pulse'
+  let dotColor = 'bg-accent-strong animate-pulse motion-reduce:animate-none'
   if (pendingApproval) {
-    dotColor = 'bg-warning animate-pulse'
+    dotColor = 'bg-warning animate-pulse motion-reduce:animate-none'
   } else if (status === 'complete') {
     dotColor = 'bg-success'
   } else if (status === 'cancelled') {

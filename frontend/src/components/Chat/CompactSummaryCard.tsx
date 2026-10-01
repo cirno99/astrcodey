@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import type { ConversationBlock } from '../../services/types'
 import { cn } from '../../lib/utils'
 import { pillNeutral } from '../../lib/styles'
+import { Icon } from '../ui/Icon'
 
 interface CompactSummaryCardProps {
   block: Extract<ConversationBlock, { kind: 'compactSummary' }>
@@ -20,21 +21,7 @@ function CompactSummaryCard({ block }: CompactSummaryCardProps) {
   return (
     <div className="rounded-[18px] border border-border bg-surface-soft px-5 py-4 shadow-soft">
       <div className="flex items-center gap-2 text-[13px]">
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 text-text-muted"
-        >
-          <polyline points="1 4 1 10 7 10"></polyline>
-          <polyline points="23 20 23 14 17 14"></polyline>
-          <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
-        </svg>
+        <Icon name="compact" size={16} className="shrink-0 text-text-muted" />
         <span className="font-medium text-text-primary">对话已压缩</span>
         <span className={pillNeutral}>{block.trigger}</span>
         <span className="ml-auto shrink-0 font-mono text-[11px] text-text-muted">

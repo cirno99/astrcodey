@@ -239,7 +239,7 @@ fn recall_project_lines(
     Ok(trim_lines_to_char_budget(lines, max_chars))
 }
 
-fn trim_lines_to_char_budget(lines: Vec<String>, max_chars: usize) -> Vec<String> {
+pub(crate) fn trim_lines_to_char_budget(lines: Vec<String>, max_chars: usize) -> Vec<String> {
     if max_chars == 0 {
         return Vec::new();
     }

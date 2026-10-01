@@ -19,6 +19,7 @@ use crate::{
     prompts,
     scope::ScopedMemoryStores,
     store::{AppendResult, MemoryStorePool},
+    turn_recall::trim_lines_to_char_budget,
     workers::MemoryWorkers,
 };
 
@@ -302,6 +303,7 @@ impl ToolHandler for MemoryListHandler {
 pub(crate) struct MemoryRecallHandler {
     pub store_pool: Arc<MemoryStorePool>,
     pub session_prefs: Arc<crate::turn_recall::SessionPrefsCache>,
+    pub config: Arc<RwLock<MemoryConfig>>,
 }
 
 #[async_trait::async_trait]
@@ -321,6 +323,18 @@ impl PromptBuildHandler for MemoryRecallHandler {
         .await
         .map_err(|e| ExtensionError::Internal(e.to_string()))?
         .unwrap_or_default();
+
+        let budget = self.config.read().max_injected_user_pref_chars;
+        let total = global_prefs.len();
+        let global_prefs = trim_lines_to_char_budget(global_prefs, budget);
+        if global_prefs.len() < total {
+            tracing::warn!(
+                kept = global_prefs.len(),
+                dropped = total - global_prefs.len(),
+                budget,
+                "memory: user_pref block truncated to configured character budget"
+            );
+        }
 
         let body = prompts::memory_tools_instruction(
             MEMORY_LIST_TOOL,
@@ -386,4 +400,57 @@ pub(crate) async fn list_memories(
     .await?;
 
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    use astrcode_extension_sdk::testing::HookContextBuilder;
+    use tempfile::TempDir;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn user_pref_injection_respects_character_budget() {
+        let temp = TempDir::new().unwrap();
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace).unwrap();
+        let working_dir = workspace.to_string_lossy().into_owned();
+
+        let pool = Arc::new(MemoryStorePool::new());
+        pool.set_root(temp.path().join("extension_data/astrcode.memory"))
+            .unwrap();
+        let scoped = pool.get_scoped(&working_dir).unwrap();
+        for word in ["alpha", "bravo", "charlie", "delta"] {
+            scoped
+                .user
+                .append(
+                    "user_pref",
+                    &format!("Preference {word}: {}", format!("{word} ").repeat(40)),
+                )
+                .unwrap();
+        }
+        assert_eq!(scoped.all_user_preference_lines().unwrap().len(), 4);
+
+        let handler = MemoryRecallHandler {
+            store_pool: pool,
+            session_prefs: Arc::new(crate::turn_recall::SessionPrefsCache::default()),
+            config: Arc::new(RwLock::new(MemoryConfig {
+                max_injected_user_pref_chars: 400,
+                ..MemoryConfig::default()
+            })),
+        };
+
+        let contributions = handler
+            .handle(
+                HookContextBuilder::new("astrcode-memory")
+                    .session("session", &workspace, None)
+                    .build_prompt(vec![]),
+            )
+            .await
+            .unwrap();
+
+        let body = &contributions.additional_instructions[0];
+        assert!(body.contains("Preference alpha"));
+        assert!(!body.contains("Preference charlie"));
+    }
 }

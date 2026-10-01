@@ -25,6 +25,10 @@ export type IconName =
   | 'spark'
   | 'board'
   | 'check'
+  | 'brain'
+  | 'compact'
+  | 'zap'
+  | 'terminal'
 
 type IconProps = SVGProps<SVGSVGElement> & {
   name: IconName
@@ -222,6 +226,39 @@ const icons: Record<
   check: (props) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
       <path d="m5 12 5 5L19 7" strokeWidth="2.4" />
+    </svg>
+  ),
+  brain: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path
+        d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"
+        strokeWidth="2"
+      />
+      <path
+        d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"
+        strokeWidth="2"
+      />
+      <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" strokeWidth="2" />
+    </svg>
+  ),
+  compact: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <polyline points="1 4 1 10 7 10" strokeWidth="2" />
+      <polyline points="23 20 23 14 17 14" strokeWidth="2" />
+      <path
+        d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"
+        strokeWidth="2"
+      />
+    </svg>
+  ),
+  zap: (props) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  terminal: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
+      <path d="M8 8 4 12l4 4M16 8l4 4-4 4M13 5l-2 14" strokeWidth="2" />
     </svg>
   ),
 }

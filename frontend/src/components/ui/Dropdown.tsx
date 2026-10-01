@@ -24,13 +24,23 @@ export function Dropdown({
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => {
+    const handlePointerDown = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose()
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      // 只关掉最内层的弹层：阻止冒泡，避免同时触发外层 Modal 的 Escape 关闭。
+      e.stopPropagation()
+      onClose()
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open, onClose])
 
   return (

@@ -25,6 +25,8 @@ pub(crate) struct MemoryConfig {
     pub min_project_memory_score: f64,
     /// Max total characters for injected memory block.
     pub max_injected_memory_chars: usize,
+    /// Max total characters for the `user_pref` block injected into the system prompt.
+    pub max_injected_user_pref_chars: usize,
     /// Skip turn-end recall when the exchange text is shorter than this (characters).
     pub min_recall_query_chars: usize,
 }
@@ -42,6 +44,7 @@ impl Default for MemoryConfig {
             max_injected_project_memories: 5,
             min_project_memory_score: 0.35,
             max_injected_memory_chars: 1500,
+            max_injected_user_pref_chars: 1500,
             min_recall_query_chars: 12,
         }
     }

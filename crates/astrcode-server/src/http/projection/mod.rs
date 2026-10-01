@@ -49,6 +49,8 @@ pub(in crate::http) fn metrics_to_dto(metrics: &SessionMetrics) -> ConversationM
         reasoning_output_tokens: metrics.reasoning_output_tokens,
         last_prompt_tokens: metrics.last_prompt_tokens,
         last_cached_tokens: metrics.last_cached_tokens,
+        last_output_tokens: metrics.last_output_tokens,
+        last_reasoning_output_tokens: metrics.last_reasoning_output_tokens,
 
         context_tokens: metrics
             .context_tokens

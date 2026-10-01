@@ -23,7 +23,7 @@ cachedTokens: number,
  */
 cacheCreationTokens: number,
 /**
- * 生成 token 数。
+ * 会话累计生成 token 数。
  */
 outputTokens: number,
 /**
@@ -40,6 +40,16 @@ lastPromptTokens?: number | null,
  * 最近一次模型请求中命中缓存读取的 token 数。
  */
 lastCachedTokens?: number | null,
+/**
+ * 最近一次模型请求的生成 token 数；尚无请求或 provider 未上报时为空。
+ *
+ * 与 provider 账单里「输出」一栏同口径：单次请求的生成量，不是累计值。
+ */
+lastOutputTokens?: number | null,
+/**
+ * 最近一次模型请求生成 token 中的推理部分。
+ */
+lastReasoningOutputTokens?: number | null,
 /**
  * 最近一次响应结束后的上下文占用；上下文身份变化时为空。
  */

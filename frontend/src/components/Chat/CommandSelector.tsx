@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SlashCommandInfo } from '../../services/types'
 import { cn } from '../../lib/utils'
+import { Icon } from '../ui/Icon'
 
 interface CommandSelectorProps {
   visible: boolean
@@ -124,7 +125,7 @@ export default function CommandSelector({
                 onMouseEnter={() => setSelectedIndex(index)}
                 onClick={() => onSelect(option)}
                 className={cn(
-                  'w-full flex items-center justify-start gap-3 h-[34px] text-left transition-all duration-100 ease-out rounded-lg cursor-pointer border',
+                  'w-full flex items-center justify-start gap-3 h-[34px] text-left transition-colors duration-100 ease-out rounded-lg cursor-pointer border',
                   index === selectedIndex
                     ? 'bg-accent-soft text-accent-strong border-l-[3px] border-l-accent-strong pl-[7px] pr-2.5 font-semibold'
                     : 'text-text-secondary border-transparent px-2.5 hover:bg-surface-muted'
@@ -188,34 +189,11 @@ function CommandIcon({
   extensionId: string
   selected: boolean
 }) {
-  if (extensionId === SKILL_EXTENSION_ID) {
-    return (
-      <svg
-        className={cn(
-          'h-4 w-4',
-          selected ? 'text-accent-strong' : 'text-text-muted'
-        )}
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor" />
-      </svg>
-    )
-  }
-
   return (
-    <svg
-      className={cn(
-        'h-4 w-4 fill-none',
-        selected ? 'stroke-accent-strong' : 'stroke-text-muted'
-      )}
-      viewBox="0 0 24 24"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <path d="M8 8 4 12l4 4M16 8l4 4-4 4M13 5l-2 14" />
-    </svg>
+    <Icon
+      name={extensionId === SKILL_EXTENSION_ID ? 'zap' : 'terminal'}
+      size={16}
+      className={selected ? 'text-accent-strong' : 'text-text-muted'}
+    />
   )
 }

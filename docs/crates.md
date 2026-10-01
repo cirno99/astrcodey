@@ -46,7 +46,6 @@ AstrCode 当前 workspace 有 31 个成员，全部位于 `crates/` 下。
 | `astrcode-extension-ask-user` | `crates/astrcode-extension-ask-user` | lib | `askUser` 挂起交互、受保护 HTTP 与实时事件 |
 | `astrcode-extension-goal` | `crates/astrcode-extension-goal` | lib | Codex-style session goal、token 预算与自动续跑 |
 | `astrcode-extension-memory` | `crates/astrcode-extension-memory` | lib | 用户/项目记忆、记忆索引、召回、保存/删除工具 |
-| `astrcode-extension-channels` | `crates/astrcode-extension-channels` | lib | Telegram channel 入口扩展 |
 | `astrcode-extension-web-tools` | `crates/astrcode-extension-web-tools` | lib | `web-search` 和 `fetch-url` 网络工具 |
 | `astrcode-server` | `crates/astrcode-server` | lib + bins | stdio/HTTP/ACP 后端、session manager、turn scheduler |
 | `astrcode-client` | `crates/astrcode-client` | lib | typed JSON-RPC client、transport、事件流 |
@@ -309,11 +308,11 @@ pipeline 不再接收第二份 `turn_id`。前端同样不复制 conversation ph
 - `BundledExtensionSource`：实现 `ExtensionSource`，根据配置状态返回启用的扩展。
 - `bundled_extensions`：按优先级返回扩展列表，早注册的扩展在工具名冲突时有优先权。
 - `bundled_extension_ids`：返回当前 feature 编译进来的扩展 id。
-- `extension_enabled`：统一配置显式值和默认启用策略。`memory`、`channels` 默认关闭，其他扩展默认启用。
+- `extension_enabled`：统一配置显式值和默认启用策略。`memory` 默认关闭，其他扩展默认启用。
 
 Feature：
 
-- `default` 包含 agent-tools、coding、mcp、skill、session-commands、todo-tool、mode、ask-user、goal、memory、channels、web-tools。
+- `default` 包含 agent-tools、coding、mcp、skill、session-commands、todo-tool、mode、ask-user、goal、memory、web-tools。
 - 单独 feature 对应每个内置扩展，便于裁剪二进制。
 
 依赖边界：依赖内置扩展 crate 和 `astrcode-extensions`/`astrcode-extension-sdk`。这是少数允许直接依赖所有内置扩展的 composition crate。
@@ -562,28 +561,6 @@ authoring API 重构把数据根目录从旧的 `~/.astrcode/memory/` 与
 `~/.astrcode/projects/<key>/extension_data/astrcode.memory/` 统一迁到上面的 extension-owned
 目录；这是明确的不兼容变更，不做旧目录双读或自动迁移。
 
-## `astrcode-extension-channels`
-
-路径：`crates/astrcode-extension-channels`
-
-职责：外部 channel 入口扩展，目前实现 Telegram bot polling。它把外部聊天消息映射为 AstrCode root session 的 turn，并把回复发回聊天。
-
-主要内容：
-
-- 扩展 id：`astrcode-channels`。
-- 配置类型：`ChannelsConfig`，当前包含 `telegram` 子配置。
-- Telegram 配置：启用开关、bot token 或 env 引用、allowlist、allow all、命令注册、streaming 预留、工作目录、超时、最大回复长度。
-- `ChannelRuntime`：保存配置、chat 到 session 的映射、session operations 和 Telegram API。
-- `poll_telegram`：long polling `getUpdates`，处理 shutdown token。
-- `TelegramApi` trait 和 `HttpTelegramApi` 实现。
-- inbound 处理：鉴权 chat id，处理 `/start`/`/help`，创建或复用 chat session，提交 turn，拆分回复。
-
-能力声明：`InputDelivery`、`NetworkClient`。
-
-依赖边界：只依赖 `astrcode-extension-sdk`。网络访问和 root session 输入投递分别由
-`NetworkClient` 和 `InputDelivery` 授权。
-
-测试线索：单元/异步测试覆盖 nested config、拒绝 flat config、token env 引用、命令、回复拆分、session 复用、未授权 chat 拒绝等。
 
 ## `astrcode-extension-web-tools`
 

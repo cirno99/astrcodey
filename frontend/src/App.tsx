@@ -46,7 +46,7 @@ export default function App() {
     setMainView('chat')
   }
 
-  const { width, isOpen, toggle, onResizeStart, isResizing } =
+  const { width, isOpen, toggle, onResizeStart, isResizing, containerRef } =
     useSidebarResize()
 
   useEffect(() => {
@@ -82,6 +82,7 @@ export default function App() {
         )}
         {isOpen && (
           <div
+            ref={containerRef}
             className="fixed inset-y-0 left-0 z-40 min-h-0 min-w-0 flex-none shadow-surface-lg md:static md:z-auto md:shadow-none"
             style={{ width, maxWidth: 'calc(100vw - 64px)' }}
           >

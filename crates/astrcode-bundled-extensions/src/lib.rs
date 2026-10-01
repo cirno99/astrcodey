@@ -102,13 +102,6 @@ const BUNDLED_EXTENSION_CATALOG: &[BundledExtensionSpec] = &[
         factory: astrcode_extension_memory::extension,
         validate_config: astrcode_extension_memory::validate_config,
     },
-    #[cfg(feature = "channels")]
-    BundledExtensionSpec {
-        id: "astrcode-channels",
-        default_enabled: false,
-        factory: astrcode_extension_channels::extension,
-        validate_config: astrcode_extension_channels::validate_config,
-    },
     #[cfg(feature = "kanban")]
     BundledExtensionSpec {
         id: "astrcode-kanban",
@@ -243,7 +236,6 @@ mod tests {
         ]);
         assert!(extension_enabled(&states, "astrcode.memory"));
         assert!(!extension_enabled(&states, "astrcode-todo-tool"));
-        assert!(!extension_enabled(&states, "astrcode-channels"));
         assert!(extension_enabled(&states, "external.extension"));
     }
 
@@ -304,12 +296,6 @@ mod tests {
                 "astrcode.memory",
                 serde_json::json!({ "maxContexts": 20 }),
                 serde_json::json!({ "maxContexts": "many" }),
-            ),
-            #[cfg(feature = "channels")]
-            (
-                "astrcode-channels",
-                serde_json::json!({ "telegram": {} }),
-                serde_json::json!({ "unexpected": true }),
             ),
             #[cfg(feature = "kanban")]
             (

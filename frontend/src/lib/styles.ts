@@ -6,7 +6,7 @@ export const pillSuccess = `${pillBase} text-success`
 export const pillDanger = `${pillBase} text-danger`
 
 export const ghostIconButton =
-  'inline-flex items-center justify-center rounded-lg text-text-muted transition-colors duration-150 hover:bg-surface-muted hover:text-text-primary'
+  'inline-flex items-center justify-center rounded-lg text-text-muted transition-colors duration-150 hover:bg-surface-muted hover:text-text-primary focus-visible:outline-none focus-visible:shadow-focus-accent'
 export const chevronIcon =
   'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center text-text-muted transition-transform duration-150 ease-out group-open:rotate-90'
 
@@ -48,9 +48,9 @@ export const fieldInput =
 export const fieldButton =
   'flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2.5 text-[13px] text-text-primary transition-colors duration-150 hover:bg-surface-muted focus-visible:border-border-strong focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55'
 export const btnSecondary =
-  'rounded-lg border border-border bg-surface px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface-muted hover:text-text-primary'
+  'rounded-lg border border-border bg-surface px-4 py-2 text-[13px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface-muted hover:text-text-primary focus-visible:outline-none focus-visible:shadow-focus-accent'
 export const btnPrimary =
-  'rounded-lg border-none bg-btn-primary-bg px-4 py-2 text-[13px] font-medium text-btn-primary-fg transition-opacity duration-150 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40'
+  'rounded-lg border-none bg-btn-primary-bg px-4 py-2 text-[13px] font-medium text-btn-primary-fg transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:shadow-focus-accent disabled:cursor-not-allowed disabled:opacity-40'
 export const overlayBackdrop = 'var(--overlay-backdrop)'
 
 export const PHASE_BG_CLASS: Record<string, string> = {

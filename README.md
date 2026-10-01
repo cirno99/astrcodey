@@ -166,27 +166,16 @@ MCP servers start at extension initialization and persist across turns via a lon
 
 ### Extension Configuration
 
-Extensions can be enabled or disabled via `~/.astrcode/config.toml`. By default, all extensions are enabled except `memory` and `channels`, which are disabled by default.
+Extensions can be enabled or disabled via `~/.astrcode/config.toml`. By default, all extensions are enabled except `memory`, which is disabled by default.
 
 ```toml
 version = "1"
 
 [runtime.extensionStates]
 "astrcode.memory" = true
-"astrcode-channels" = true
 ```
 
 To enable the memory extension, set `"astrcode.memory": true` under `runtime.extensionStates`.
-To enable the channels extension, set `"astrcode-channels": true` there and configure Telegram under `extensions`. See the [Configuration Guide](docs/configuration.md).
-Telegram channels are configured under `extensions.astrcode-channels.telegram`; keep
-`allowedChatIds` populated unless you explicitly set `allowAllChats` to `true`.
-
-```toml
-[extensions.astrcode-channels.telegram]
-enabled = true
-botTokenEnv = "TELEGRAM_BOT_TOKEN"
-allowedChatIds = ["123456789"]
-```
 
 ### Built-in Extensions
 
@@ -201,7 +190,6 @@ First-party extensions are wired through [`astrcode-bundled-extensions`](crates/
 | **Goal** | `astrcode-extension-goal` | Codex-style session goal tracking, token budgets, and automatic continuation |
 | **Ralph** | `astrcode-extension-ralph` | Ralph loop: re-feeds a workspace task file each round until a completion promise is printed |
 | **Memory** | `astrcode-extension-memory` | Project-scoped markdown memory storage (disabled by default) |
-| **Channels** | `astrcode-extension-channels` | Telegram channel bridge for using AstrCode from an external chat (disabled by default) |
 | **Web Tools** | `astrcode-extension-web-tools` | Built-in `web-search` and `fetch-url` tools (DuckDuckGo default; Brave/Serper optional) |
 
 Configure Web Tools under `extensions.astrcode-web-tools` (enabled by default):
@@ -318,7 +306,7 @@ For detailed configuration documentation, see [Configuration Guide](docs/configu
                    │ astrcode-extension-coding   │
                    │ mode · goal · skill · todo  │
                    │ agent-tools · mcp · memory  │
-                   │ channels · web-tools + IPC  │
+                   │ web-tools + IPC             │
                    └────────────────────────────┘
         ┌─────────────────────────────────────┐
         │              Shared layer            │
@@ -371,7 +359,6 @@ The Cargo workspace under [`crates/`](crates/) contains **31 crates**. Crates ar
 | [`astrcode-extension-goal`](crates/astrcode-extension-goal) | Codex-style session goals, token budgets, and automatic continuation |
 | [`astrcode-extension-ralph`](crates/astrcode-extension-ralph) | Ralph loop: re-injects a workspace task file each round until a completion promise is printed |
 | [`astrcode-extension-memory`](crates/astrcode-extension-memory) | Project-scoped markdown memory (disabled by default) |
-| [`astrcode-extension-channels`](crates/astrcode-extension-channels) | Telegram channel bridge (disabled by default) |
 | [`astrcode-extension-web-tools`](crates/astrcode-extension-web-tools) | Web search and URL fetch tools with SSRF guards and fetch cache |
 
 ### Layer 4: Services & Clients

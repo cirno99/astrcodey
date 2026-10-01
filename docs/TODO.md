@@ -22,7 +22,7 @@
     - [ ] Handler 运行时进度 / 日志上报通道（协议 + SDK API）
     - [ ] 合并 / 澄清 `prelude` 与 `worker_prelude` 文档入口（README 链到 author guide）— 两个模块都存在且 author guide 已有解释，但 SDK crate 无 README 链接
   - [ ] **内置扩展 vs 外置部署策略**
-    - [ ] 明确各内置 crate（agent-tools / mcp / skill / todo / mode / goal / memory / channels / web-tools）的外置替代矩阵与默认开关
+    - [ ] 明确各内置 crate（agent-tools / mcp / skill / todo / mode / goal / memory / web-tools）的外置替代矩阵与默认开关
     - [ ] MCP 保持独立桥接层，不与 s5r 合并（文档中写清边界）
   - [ ] **测试与 CI**
     - [ ] 外置 agent-tool 最小 E2E（`session_control` + `prompt_build` + 后台 submit_turn）

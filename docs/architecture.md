@@ -284,7 +284,7 @@ turn hooks 和 session operations。工具与 prompt 通过 generation 组成一
 
 ### 当前状态
 
-内部插件实现（MCP client / Skill / Agent-Tool / Todo / Goal / Memory / Channels / Web Tools）统一依赖扩展 SDK；外置扩展通过 s5r 子进程加载，并在 typed `InitializeManifest` 中声明所需宿主能力。
+内部插件实现（MCP client / Skill / Agent-Tool / Todo / Goal / Memory / Web Tools）统一依赖扩展 SDK；外置扩展通过 s5r 子进程加载，并在 typed `InitializeManifest` 中声明所需宿主能力。
 
 ---
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, type RefObject } from 'react'
 
 const STORAGE_KEY = 'astrcode-sidebar-width'
 const DEFAULT_WIDTH = 300
@@ -11,6 +11,12 @@ export interface UseSidebarResize {
   toggle: () => void
   onResizeStart: (e: React.PointerEvent) => void
   isResizing: boolean
+  /** 拖拽期间宽度直接写在元素上，避免每次 pointermove 触发整棵树重渲染。 */
+  containerRef: RefObject<HTMLDivElement | null>
+}
+
+function clampWidth(width: number): number {
+  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width))
 }
 
 export function useSidebarResize(): UseSidebarResize {
@@ -32,6 +38,8 @@ export function useSidebarResize(): UseSidebarResize {
   const [isResizing, setIsResizing] = useState(false)
   const startXRef = useRef(0)
   const startWidthRef = useRef(0)
+  const pendingWidthRef = useRef(width)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const persistWidth = useCallback((nextWidth: number) => {
     try {
@@ -46,19 +54,17 @@ export function useSidebarResize(): UseSidebarResize {
 
     const handlePointerMove = (e: PointerEvent) => {
       const delta = e.clientX - startXRef.current
-      const nextWidth = Math.min(
-        MAX_WIDTH,
-        Math.max(MIN_WIDTH, startWidthRef.current + delta)
-      )
-      setWidth(nextWidth)
+      const nextWidth = clampWidth(startWidthRef.current + delta)
+      pendingWidthRef.current = nextWidth
+      const element = containerRef.current
+      if (element) element.style.width = `${nextWidth}px`
     }
 
     const handlePointerUp = () => {
+      const committed = pendingWidthRef.current
       setIsResizing(false)
-      setWidth((current) => {
-        persistWidth(current)
-        return current
-      })
+      persistWidth(committed)
+      setWidth(committed)
     }
 
     window.addEventListener('pointermove', handlePointerMove)
@@ -74,6 +80,7 @@ export function useSidebarResize(): UseSidebarResize {
       e.preventDefault()
       startXRef.current = e.clientX
       startWidthRef.current = width
+      pendingWidthRef.current = width
       setIsResizing(true)
     },
     [width]
@@ -83,5 +90,5 @@ export function useSidebarResize(): UseSidebarResize {
     setIsOpen((v) => !v)
   }, [])
 
-  return { width, isOpen, toggle, onResizeStart, isResizing }
+  return { width, isOpen, toggle, onResizeStart, isResizing, containerRef }
 }

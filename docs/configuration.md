@@ -261,7 +261,6 @@ thinkingCapability = { wireMapping = "open_ai_chat", allowedEffort = [], canDisa
 | `astrcode-ralph` | 启用 | Ralph 循环：反复注入工作区任务文件直到完成承诺 |
 | `astrcode-web-tools` | 启用 | `web-search` / `fetch-url` |
 | `astrcode.memory` | **关闭** | 项目记忆 |
-| `astrcode-channels` | **关闭** | Telegram 通道 |
 
 ```toml
 [runtime.extensionStates]
@@ -302,6 +301,7 @@ shellTimeoutSecs = 180
 | `maxInjectedProjectMemories` | `5` | 每轮最多注入条数 |
 | `minProjectMemoryScore` | `0.35` | 注入最低相关分（0–1） |
 | `maxInjectedMemoryChars` | `1500` | 注入块总字符上限 |
+| `maxInjectedUserPrefChars` | `1500` | 注入 system prompt 的 `user_pref` 块字符上限 |
 | `minRecallQueryChars` | `12` | 过短 exchange 跳过 turn 末召回 |
 
 **数据目录**（与 config 分离）：
@@ -346,24 +346,7 @@ shellTimeoutSecs = 180
 
 `fetch-url` 阻止 localhost 与私网地址（SSRF 防护）。
 
-### 8.4 `astrcode-channels`
-
-```toml
-[extensions.astrcode-channels.telegram]
-enabled = true
-botTokenEnv = "TELEGRAM_BOT_TOKEN"
-allowedChatIds = ["123456789"]
-allowAllChats = false
-registerCommands = false
-streaming = false
-requestTimeoutSecs = 30
-pollTimeoutSecs = 25
-maxReplyChars = 3500
-```
-
-未设置 `allowAllChats: true` 时应配置 `allowedChatIds` 白名单。`botToken` 可直接写 token，更推荐 `botTokenEnv`。Telegram 创建的顶层 session 绑定扩展启动时的宿主 workspace，通道配置不能覆盖该路径。
-
-### 8.5 MCP（**不在** `extensions` 内）
+### 8.4 MCP（**不在** `extensions` 内）
 
 MCP 服务器仅通过 `mcp.json` 配置，由 `astrcode-mcp` 扩展加载。
 

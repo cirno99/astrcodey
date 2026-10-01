@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import type { AvailableModel, CurrentModelInfo } from '../../services/types'
 import { providerWireFormatLabel } from '../../lib/providerLabels'
 import { cn } from '../../lib/utils'
+import { Icon } from '../ui/Icon'
 
 interface ModelSelectorProps {
   refreshKey: number
@@ -135,17 +136,11 @@ export default function ModelSelector({
         <span className="max-w-[140px] truncate font-medium">
           {currentModel?.modelId || (loading ? '加载中...' : '未选择')}
         </span>
-        <svg
-          className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <Icon
+          name="chevron-down"
+          size={14}
+          className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {open && (
@@ -182,7 +177,7 @@ export default function ModelSelector({
                           key={`${opt.profileName}-${opt.modelId}`}
                           type="button"
                           className={cn(
-                            'w-full flex items-center justify-between px-3 h-[34px] text-left rounded-lg text-[13px] font-medium transition-all duration-100 ease-out',
+                            'w-full flex items-center justify-between px-3 h-[34px] text-left rounded-lg text-[13px] font-medium transition-colors duration-100 ease-out',
                             isActive
                               ? 'bg-accent-soft text-accent-strong border-l-[3px] border-l-accent-strong pl-[9px]'
                               : 'text-text-primary hover:bg-surface-muted'
@@ -193,17 +188,11 @@ export default function ModelSelector({
                         >
                           <span className="truncate">{opt.modelId}</span>
                           {isActive && (
-                            <svg
-                              className="w-4 h-4 text-accent-strong shrink-0"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
+                            <Icon
+                              name="check"
+                              size={16}
+                              className="text-accent-strong shrink-0"
+                            />
                           )}
                         </button>
                       )

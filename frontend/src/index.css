@@ -140,7 +140,7 @@
   --code-text: #262626;
   --shadow-soft: 0 1px 3px rgba(73, 62, 92, 0.06);
   --shadow-composer-shell: 0 16px 46px rgba(73, 62, 92, 0.08);
-  --shadow-focus-accent: 0 0 0 3px rgba(101, 93, 138, 0.08);
+  --shadow-focus-accent: 0 0 0 3px rgba(101, 93, 138, 0.38);
   --shadow-surface-lg: 0 12px 36px rgba(73, 62, 92, 0.14);
   --phase-idle: #a3a3a3;
   --phase-thinking: #c6613f;
@@ -210,7 +210,7 @@
   --code-text: #d4d4d4;
   --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-composer-shell: 0 20px 52px rgba(0, 0, 0, 0.22);
-  --shadow-focus-accent: 0 0 0 3px rgba(169, 159, 208, 0.18);
+  --shadow-focus-accent: 0 0 0 3px rgba(169, 159, 208, 0.48);
   --shadow-surface-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
   --phase-idle: #6a6a6a;
   --phase-thinking: #d4734f;

@@ -147,6 +147,7 @@ impl Extension for MemoryExtension {
             Arc::new(MemoryRecallHandler {
                 store_pool: self.store_pool.clone(),
                 session_prefs: self.session_prefs.clone(),
+                config: self.config.clone(),
             }),
         );
         reg.on_provider_contribution(

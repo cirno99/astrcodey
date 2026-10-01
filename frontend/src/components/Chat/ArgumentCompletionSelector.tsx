@@ -114,7 +114,7 @@ export default function ArgumentCompletionSelector({
               onMouseEnter={() => setSelectedIndex(index)}
               onClick={() => onSelect(item)}
               className={cn(
-                'w-full flex items-center justify-between gap-3 h-[34px] text-left transition-all duration-100 ease-out rounded-lg cursor-pointer border',
+                'w-full flex items-center justify-between gap-3 h-[34px] text-left transition-colors duration-100 ease-out rounded-lg cursor-pointer border',
                 index === selectedIndex
                   ? 'bg-accent-soft text-accent-strong border-l-[3px] border-l-accent-strong pl-[7px] pr-2.5 font-semibold'
                   : 'text-text-secondary border-transparent px-2.5 hover:bg-surface-muted'

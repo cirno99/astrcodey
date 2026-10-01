@@ -365,7 +365,7 @@ export default function Sidebar({
                 type="button"
                 disabled={item.disabled}
                 className={cn(
-                  'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-medium outline-none transition-colors duration-150',
+                  'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-medium outline-none transition-colors duration-150 focus-visible:shadow-focus-accent',
                   'text-text-primary hover:bg-surface-muted',
                   item.disabled &&
                     'cursor-default opacity-70 hover:bg-transparent'
@@ -389,7 +389,7 @@ export default function Sidebar({
             <button
               type="button"
               className={cn(
-                'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-medium outline-none transition-colors duration-150',
+                'flex min-h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-medium outline-none transition-colors duration-150 focus-visible:shadow-focus-accent',
                 activeView === 'kanban'
                   ? 'bg-surface-muted text-text-primary'
                   : 'text-text-primary hover:bg-surface-muted'
@@ -522,7 +522,7 @@ export default function Sidebar({
                 >
                   <button
                     type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left outline-none"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left outline-none focus-visible:shadow-focus-accent"
                     onClick={() => {
                       if (selectMode) {
                         toggleProjectCollapsed(dir)
@@ -538,7 +538,7 @@ export default function Sidebar({
                   </button>
                   <button
                     type="button"
-                    className="mr-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-muted outline-none transition-colors hover:bg-surface-soft hover:text-text-primary"
+                    className="mr-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-muted outline-none transition-colors hover:bg-surface-soft hover:text-text-primary focus-visible:shadow-focus-accent"
                     onClick={(event) => {
                       event.stopPropagation()
                       toggleProjectCollapsed(dir)
@@ -572,7 +572,7 @@ export default function Sidebar({
                           key={session.sessionId}
                           type="button"
                           className={cn(
-                            'grid min-h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] outline-none transition-colors duration-150',
+                            'grid min-h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-[13px] outline-none transition-colors duration-150 focus-visible:shadow-focus-accent',
                             selectMode
                               ? 'grid-cols-[auto_minmax(0,1fr)]'
                               : 'grid-cols-[minmax(0,1fr)_auto]',

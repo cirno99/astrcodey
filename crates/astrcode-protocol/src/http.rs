@@ -423,7 +423,7 @@ pub struct ConversationMetricsDto {
     pub cached_tokens: u64,
     /// 写入缓存的 token 数（仅组成部分语义的 provider 会非零）。
     pub cache_creation_tokens: u64,
-    /// 生成 token 数。
+    /// 会话累计生成 token 数。
     pub output_tokens: u64,
     /// 其中推理 token 数。
     pub reasoning_output_tokens: u64,
@@ -435,6 +435,14 @@ pub struct ConversationMetricsDto {
     /// 最近一次模型请求中命中缓存读取的 token 数。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_cached_tokens: Option<u64>,
+    /// 最近一次模型请求的生成 token 数；尚无请求或 provider 未上报时为空。
+    ///
+    /// 与 provider 账单里「输出」一栏同口径：单次请求的生成量，不是累计值。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_output_tokens: Option<u64>,
+    /// 最近一次模型请求生成 token 中的推理部分。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_reasoning_output_tokens: Option<u64>,
     /// 最近一次响应结束后的上下文占用；上下文身份变化时为空。
 
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -166,27 +166,16 @@ MCP 服务器在扩展初始化时启动，通过长连接进程池跨 turn 复�
 
 ### 扩展配置
 
-可通过 `~/.astrcode/config.toml` 的 `runtime.extensionStates` 启用或禁用扩展。默认情况下，除 `memory` 与 `channels` 外均启用。完整字段见 [配置指南](docs/configuration.md)。
+可通过 `~/.astrcode/config.toml` 的 `runtime.extensionStates` 启用或禁用扩展。默认情况下，除 `memory` 外均启用。完整字段见 [配置指南](docs/configuration.md)。
 
 ```toml
 version = "1"
 
 [runtime.extensionStates]
 "astrcode.memory" = true
-"astrcode-channels" = true
 ```
 
 要启用 memory 扩展，在 `runtime.extensionStates` 中设置 `"astrcode.memory": true`。
-要启用 channels 扩展，设置 `"astrcode-channels": true`，并在 `extensions` 中配置 Telegram 通道。
-Telegram 通道配置位于 `extensions.astrcode-channels.telegram`；除非显式设置
-`allowAllChats: true`，否则应填写 `allowedChatIds` 白名单。
-
-```toml
-[extensions.astrcode-channels.telegram]
-enabled = true
-botTokenEnv = "TELEGRAM_BOT_TOKEN"
-allowedChatIds = ["123456789"]
-```
 
 ### 内置扩展一览
 
@@ -201,7 +190,6 @@ allowedChatIds = ["123456789"]
 | **Goal** | `astrcode-extension-goal` | Codex 风格会话目标、Token 预算、自动延续 |
 | **Ralph** | `astrcode-extension-ralph` | Ralph 循环：每轮重新注入工作区任务文件，直到打印完成承诺 |
 | **Memory** | `astrcode-extension-memory` | 项目作用域的 Markdown 记忆存储（默认关闭） |
-| **Channels** | `astrcode-extension-channels` | Telegram 通道桥接，可从外部聊天使用 AstrCode（默认关闭） |
 | **Web Tools** | `astrcode-extension-web-tools` | 内置 `web-search` 与 `fetch-url` 工具（默认 DuckDuckGo；可选 Brave/Serper） |
 
 Web Tools 在 `extensions.astrcode-web-tools` 下配置（默认启用）：
@@ -318,7 +306,7 @@ AstrCode 使用存储在 `~/.astrcode/config.toml` 的 TOML 配置系统。配�
                    │ astrcode-extension-coding   │
                    │ mode · goal · skill · todo  │
                    │ agent-tools · mcp · memory  │
-                   │ channels · web-tools + IPC  │
+                   │ web-tools + IPC             │
                    └────────────────────────────┘
         ┌─────────────────────────────────────┐
         │              共享基础层               │
@@ -371,7 +359,6 @@ Cargo workspace 在 [`crates/`](crates/) 下包含 **31 个 crate**。按架构�
 | [`astrcode-extension-goal`](crates/astrcode-extension-goal) | Codex 风格会话目标、Token 预算与自动延续 |
 | [`astrcode-extension-ralph`](crates/astrcode-extension-ralph) | Ralph 循环：反复注入工作区任务文件直到完成承诺 |
 | [`astrcode-extension-memory`](crates/astrcode-extension-memory) | 项目作用域 Markdown 记忆（默认关闭） |
-| [`astrcode-extension-channels`](crates/astrcode-extension-channels) | Telegram 通道桥接（默认关闭） |
 | [`astrcode-extension-web-tools`](crates/astrcode-extension-web-tools) | Web 搜索与 URL 抓取工具（含 SSRF 防护与抓取缓存） |
 
 ### Layer 4：服务与客户端层

@@ -249,7 +249,6 @@ async fn bundled_extension_uses_the_real_authoring_boundaries() {
 | `astrcode-goal` | `astrcode-extension-goal` | 启用 | Codex-style session goal 与自动续跑 |
 | `astrcode-ralph` | `astrcode-extension-ralph` | 启用 | Ralph 循环：反复注入任务文件直到完成承诺 |
 | `astrcode.memory` | `astrcode-extension-memory` | **关闭** | 项目级 Markdown 记忆 |
-| `astrcode-channels` | `astrcode-extension-channels` | **关闭** | Telegram 通道桥接 |
 | `astrcode-web-tools` | `astrcode-extension-web-tools` | 启用 | `web-search` / `fetch-url` 内置 Web 工具 |
 
 通过 `config.toml` 的 `runtime.extensionStates` 覆盖默认开关。配置示例见 [configuration.md](configuration.md#web-tools-extension)。

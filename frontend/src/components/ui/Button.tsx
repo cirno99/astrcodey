@@ -14,7 +14,7 @@ const variantClass: Record<ButtonVariant, string> = {
   secondary: btnSecondary,
   ghost: ghostIconButton,
   danger:
-    'rounded-xl border border-danger bg-danger-soft px-4 py-2.5 text-[13px] font-semibold text-danger transition-[filter,opacity,transform] duration-150 ease-out hover:brightness-98 active:scale-[0.98]',
+    'rounded-xl border border-danger bg-danger-soft px-4 py-2.5 text-[13px] font-semibold text-danger transition-[filter,opacity,transform] duration-150 ease-out hover:brightness-98 active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-focus-accent',
 }
 
 export function Button({

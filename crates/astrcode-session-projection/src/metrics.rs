@@ -29,6 +29,12 @@ pub struct SessionMetrics {
     pub last_prompt_tokens: Option<u64>,
     /// 最近一次模型请求中命中缓存读取的 token 数。
     pub last_cached_tokens: Option<u64>,
+    /// 最近一次模型请求的生成 token 数；尚无请求或 provider 未上报时为空。
+    ///
+    /// 这是 provider 账单里「输出」一栏的同口径值：只描述单次请求，不随请求数累积。
+    pub last_output_tokens: Option<u64>,
+    /// 最近一次模型请求生成 token 中的推理部分。
+    pub last_reasoning_output_tokens: Option<u64>,
     /// 最近一次响应结束后占用的上下文 token；上下文身份变化时清空。
     pub context_tokens: Option<usize>,
     /// 与 `context_tokens` 同一次上报的上下文窗口大小。
@@ -121,6 +127,8 @@ impl SessionMetrics {
         // 单次读数直接覆盖：它描述最近一次请求，不是需要累加的计数。
         self.last_prompt_tokens = Some(prompt.full);
         self.last_cached_tokens = Some(prompt.cached);
+        self.last_output_tokens = usage.output_tokens;
+        self.last_reasoning_output_tokens = usage.reasoning_output_tokens;
 
         self.cache_creation_tokens = self
             .cache_creation_tokens
@@ -244,6 +252,7 @@ mod tests {
         // 单次读数同样按样本自身语义归一化，且只保留最后一个样本。
         assert_eq!(metrics.last_prompt_tokens, Some(100));
         assert_eq!(metrics.last_cached_tokens, Some(70));
+        assert_eq!(metrics.last_output_tokens, Some(5));
     }
 
     #[test]
@@ -251,13 +260,13 @@ mod tests {
         let mut metrics = SessionMetrics::default();
         let turn_id = TurnId::new("turn-1");
 
-        for (seq, input, cached) in [(1u64, 100u64, 80u64), (2, 1_000, 900)] {
+        for (seq, input, cached, output) in [(1u64, 100u64, 80u64, 10u64), (2, 1_000, 900, 25)] {
             apply_event(
                 &stored(
                     seq,
                     Some(turn_id.clone()),
                     DurableEventPayload::TokenUsageRecorded {
-                        usage: usage(input, cached, 10),
+                        usage: usage(input, cached, output),
                         model_context_window: 1_000_000,
                     },
                 ),
@@ -270,6 +279,10 @@ mod tests {
         assert_eq!(metrics.last_cached_tokens, Some(900));
         assert_eq!(metrics.prompt_tokens, 1_100);
         assert_eq!(metrics.cached_tokens, 980);
+        assert_eq!(metrics.last_output_tokens, Some(25));
+        assert_eq!(metrics.output_tokens, 35);
+        // provider 未上报推理分量时保持为空，避免展示误导性的 0。
+        assert_eq!(metrics.last_reasoning_output_tokens, None);
     }
 
     #[test]
