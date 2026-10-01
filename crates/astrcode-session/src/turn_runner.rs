@@ -44,6 +44,7 @@ use crate::{
     tool_types::ExecuteToolBatch,
     turn_context::{
         SharedTurnContext, TurnError, end_turn_with_error_typed, on_step_end_best_effort,
+        user_facing_error_message,
     },
     turn_publish::{TurnEventBridge, TurnEvents},
     turn_stages::{PreparedProviderRequest, TurnState},
@@ -1101,7 +1102,7 @@ pub(crate) async fn run_turn(
     // - 成功且无错误：无事可补。
     let pending_error = match (&output, emitted_error) {
         (Err(TurnError::Aborted), _) | (_, true) | (Ok(_), false) => None,
-        (Err(error), false) => Some(error.to_string()),
+        (Err(error), false) => Some(user_facing_error_message(&error.to_string())),
     };
 
     RunTurnResult {

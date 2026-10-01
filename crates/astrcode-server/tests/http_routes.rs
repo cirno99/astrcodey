@@ -26,12 +26,11 @@ use astrcode_extensions::{Extension, testing::extension_runner_with_extensions};
 use astrcode_protocol::{
     events::ClientNotification,
     http::{
-        ApplyProviderPresetResponseDto, CommandCompletionResponse, CommandInvokeResponse,
-        CompactSessionResponse, ConfigureSessionToolsResponse, ConversationBlockDto,
-        ConversationItemsPageResponseDto, ConversationSnapshotResponseDto,
-        ConversationStateResponseDto, CreateSessionResponseDto, CustomEventConsumerListResponseDto,
-        CustomEventConsumerStatusDto, PromptSubmitResponse, ProviderCatalogResponseDto,
-        SlashCommandListResponseDto, ToolSelectionDto,
+        ApplyProviderPresetResponseDto, CommandCompletionResponse, CompactSessionResponse,
+        ConfigureSessionToolsResponse, ConversationBlockDto, ConversationItemsPageResponseDto,
+        ConversationSnapshotResponseDto, ConversationStateResponseDto, CreateSessionResponseDto,
+        CustomEventConsumerListResponseDto, CustomEventConsumerStatusDto, PromptSubmitResponse,
+        ProviderCatalogResponseDto, SlashCommandListResponseDto, ToolSelectionDto,
     },
     wire::{ProviderAuthSchemeDto, ProviderWireFormatDto},
 };
@@ -1944,44 +1943,6 @@ async fn command_list_route_exposes_backend_slash_commands() {
     assert!(!compact.needs_argument);
     assert!(compact.requires_idle);
     assert!(!compact.argument_completions);
-
-    let mode_cmd = body
-        .commands
-        .iter()
-        .find(|command| command.name == "mode")
-        .expect("mode extension command");
-    assert_eq!(mode_cmd.extension_id, "astrcode-mode");
-
-    let shift_tab = body
-        .keybindings
-        .iter()
-        .find(|kb| kb.command == "mode")
-        .expect("shift+tab mode keybinding");
-    assert_eq!(shift_tab.key, "shift+tab");
-}
-
-#[tokio::test]
-async fn invoke_command_route_toggles_mode() {
-    let runtime = runtime(Arc::new(immediate_llm())).await;
-    let app = router(Arc::clone(&runtime)).unwrap();
-    let session_id = create_session(app.clone()).await;
-
-    let http_response = post_json(
-        app,
-        &format!("/api/sessions/{session_id}/commands/mode"),
-        r#"{"arguments":""}"#,
-    )
-    .await;
-    assert_eq!(http_response.status(), StatusCode::OK);
-    let response: CommandInvokeResponse =
-        serde_json::from_slice(&body_bytes(http_response).await).unwrap();
-
-    match response {
-        CommandInvokeResponse::Display { content, .. } => {
-            assert!(content.contains("plan") || content.contains("Switched"));
-        },
-        other => panic!("expected display mode toggle, got {other:?}"),
-    }
 }
 
 #[tokio::test]
@@ -1992,7 +1953,7 @@ async fn command_completion_route_returns_empty_for_commands_without_completion(
 
     let http_response = post_json(
         app,
-        &format!("/api/sessions/{session_id}/commands/mode/complete"),
+        &format!("/api/sessions/{session_id}/commands/compact/complete"),
         r#"{"argument":"","cursor":0}"#,
     )
     .await;
@@ -2535,7 +2496,7 @@ async fn runtime_with_event_store(
         permissions: Default::default(),
         extensions: ExtensionSettings::default(),
     };
-    // 测试自定义扩展随 runner 一次性装配;bundled extensions(含 astrcode-mode)
+    // 测试自定义扩展随 runner 一次性装配;bundled extensions
     // 与生产 bootstrap 一样经 source generation 加载——若以 Direct 起源预注册,
     // 后续 config update 的 source reconcile 会与同名 Direct 实例冲突。
     let extension_runner =
@@ -2575,7 +2536,7 @@ async fn runtime_with_event_store(
         Arc::clone(&child_sessions),
     ));
     child_sessions.spawn_completion_watcher(Arc::clone(&scheduler));
-    // bundled extensions(含 astrcode-mode、session-commands、coding)经 source
+    // bundled extensions(含 session-commands、coding)经 source
     // generation 加载,与生产 reconcile 同 origin;publication 用测试注入的 LLM
     // 发布同一 extension epoch,既不覆盖测试 provider,也让 turn pin 的 expected
     // epoch 与 runner Stable 一致。

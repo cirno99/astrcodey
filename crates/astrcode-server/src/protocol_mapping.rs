@@ -1,7 +1,7 @@
 //! Internal domain and extension types mapped at the server protocol boundary.
 
 use astrcode_context::is_compact_summary_message;
-use astrcode_core::llm::{LlmContent, LlmMessage};
+use astrcode_core::llm::LlmMessage;
 use astrcode_extension_sdk::extension::{
     CommandAvailability, CommandExecution, CustomEventDeclaration, CustomEventSourceFilter,
     CustomEventSubscription, ExtensionCapability, ExtensionHttpMethod, Keybinding,
@@ -62,7 +62,7 @@ pub(crate) fn message_to_dto(message: &LlmMessage) -> MessageDto {
     let content = message
         .content
         .iter()
-        .map(content_display_text)
+        .map(|content| content.to_display_text())
         .collect::<String>();
     let is_compact_summary = is_compact_summary_message(message);
     let role = if is_compact_summary {
@@ -75,19 +75,6 @@ pub(crate) fn message_to_dto(message: &LlmMessage) -> MessageDto {
         role,
         content,
         is_compact_summary,
-    }
-}
-
-fn content_display_text(content: &LlmContent) -> String {
-    match content {
-        LlmContent::ToolCall {
-            name, arguments, ..
-        } if name == "upsertSessionPlan" => arguments
-            .get("content")
-            .and_then(|value| value.as_str())
-            .unwrap_or_default()
-            .to_string(),
-        other => other.to_display_text(),
     }
 }
 

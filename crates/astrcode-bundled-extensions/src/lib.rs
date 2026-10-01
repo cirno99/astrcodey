@@ -74,13 +74,6 @@ const BUNDLED_EXTENSION_CATALOG: &[BundledExtensionSpec] = &[
         factory: astrcode_extension_todo_tool::extension,
         validate_config: reject_non_empty_config,
     },
-    #[cfg(feature = "mode")]
-    BundledExtensionSpec {
-        id: "astrcode-mode",
-        default_enabled: true,
-        factory: astrcode_extension_mode::extension,
-        validate_config: reject_non_empty_config,
-    },
     #[cfg(feature = "ask-user")]
     BundledExtensionSpec {
         id: "astrcode-ask-user",
@@ -93,6 +86,13 @@ const BUNDLED_EXTENSION_CATALOG: &[BundledExtensionSpec] = &[
         id: "astrcode-goal",
         default_enabled: true,
         factory: astrcode_extension_goal::extension,
+        validate_config: reject_non_empty_config,
+    },
+    #[cfg(feature = "ralph")]
+    BundledExtensionSpec {
+        id: "astrcode-ralph",
+        default_enabled: true,
+        factory: astrcode_extension_ralph::extension,
         validate_config: reject_non_empty_config,
     },
     #[cfg(feature = "memory")]
@@ -239,10 +239,10 @@ mod tests {
     fn extension_enablement_uses_catalog_defaults_and_explicit_overrides() {
         let states = BTreeMap::from([
             ("astrcode.memory".to_string(), true),
-            ("astrcode-mode".to_string(), false),
+            ("astrcode-todo-tool".to_string(), false),
         ]);
         assert!(extension_enabled(&states, "astrcode.memory"));
-        assert!(!extension_enabled(&states, "astrcode-mode"));
+        assert!(!extension_enabled(&states, "astrcode-todo-tool"));
         assert!(!extension_enabled(&states, "astrcode-channels"));
         assert!(extension_enabled(&states, "external.extension"));
     }

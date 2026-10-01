@@ -138,7 +138,7 @@ pub enum ToolPromptTag {
     Filesystem,
     /// 系统类工具（shell/task）。
     System,
-    /// 计划类工具（todoWrite/switchMode/upsertSessionPlan）。
+    /// 计划/进度类工具（todoWrite 等）。
     Planning,
     /// 工具发现入口（tool_search_tool/Skill）。会触发 system prompt 详细指引。
     Discovery,

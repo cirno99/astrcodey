@@ -66,6 +66,10 @@ async fn parse_stream(
     })
     .await?;
 
+    // 流内错误事件已终止本次响应；交给共享传输层决定重放还是上报。
+    if let Some(message) = state.stream_error.take() {
+        return Err(LlmError::StreamDisconnected { message });
+    }
     // 接收端关闭或回调主动停止 → 不再补发收尾事件。
     let Some(summary) = completed else {
         return Ok(());

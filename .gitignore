@@ -52,6 +52,7 @@ Desktop.ini
 /.omx/logs/
 /.omx/state/
 /.astrcode/
+.ralph/
 **/.astrcode/
 
 .claude/

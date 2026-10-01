@@ -60,7 +60,7 @@
 - [ ] **session_control 补强**:`when_idle` await 式操作、`cancel_turn` 带 `keep_inbox` 选项
 - [ ] **per-call 并发分类器**:`ToolDefinition` 可选 `is_concurrency_safe(args)` 回调(现为静态 `ExecutionMode`;s5r 需权衡往返开销)
 - [ ] **skill provider 注册**:开放 skill catalog 贡献 seam(现来源固定磁盘)
-- [ ] **goal/planMode 程序化服务面**:跨扩展编排用的类型化契约(现为内置扩展,只能靠 session_state/自定义事件交互)
+- [ ] **goal 程序化服务面**:跨扩展编排用的类型化契约(现为内置扩展,只能靠 session_state/自定义事件交互)
 - [ ] **结构化多内容块工具结果**:`ToolResult` 从单一 String 演进为类型化 content blocks(是 UI 呈现 intent 完整版的前提)
 - [ ] **外部 hooks 桥**:读 Claude Code / Codex `hooks.json` shell hook 配置映射到现有 hook 点(生态迁移 shim)
 

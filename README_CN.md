@@ -198,8 +198,8 @@ allowedChatIds = ["123456789"]
 | **MCP** | `astrcode-extension-mcp` | MCP 协议客户端（常驻进程池、后台预热、并发合并） |
 | **Skill** | `astrcode-extension-skill` | 斜杠命令技能发现与调度 |
 | **Todo Tool** | `astrcode-extension-todo-tool` | 进度追踪 Todo 工具 |
-| **Mode** | `astrcode-extension-mode` | Agent 运行模式切换（Code / Plan），含 Exit Gate、计划 Artifact 持久化、快捷键与状态栏注册 |
 | **Goal** | `astrcode-extension-goal` | Codex 风格会话目标、Token 预算、自动延续 |
+| **Ralph** | `astrcode-extension-ralph` | Ralph 循环：每轮重新注入工作区任务文件，直到打印完成承诺 |
 | **Memory** | `astrcode-extension-memory` | 项目作用域的 Markdown 记忆存储（默认关闭） |
 | **Channels** | `astrcode-extension-channels` | Telegram 通道桥接，可从外部聊天使用 AstrCode（默认关闭） |
 | **Web Tools** | `astrcode-extension-web-tools` | 内置 `web-search` 与 `fetch-url` 工具（默认 DuckDuckGo；可选 Brave/Serper） |
@@ -367,9 +367,9 @@ Cargo workspace 在 [`crates/`](crates/) 下包含 **31 个 crate**。按架构�
 | [`astrcode-extension-mcp`](crates/astrcode-extension-mcp) | MCP 客户端：stdio/HTTP 传输、常驻进程池、预热与健康检查 |
 | [`astrcode-extension-skill`](crates/astrcode-extension-skill) | 斜杠命令技能发现与 Skill 工具调度 |
 | [`astrcode-extension-todo-tool`](crates/astrcode-extension-todo-tool) | 进度追踪 Todo 工具 |
-| [`astrcode-extension-mode`](crates/astrcode-extension-mode) | Code / Plan 模式切换、Exit Gate、计划 Artifact、快捷键与状态栏 |
 | [`astrcode-extension-ask-user`](crates/astrcode-extension-ask-user) | 结构化用户提问、挂起交互状态与受保护回复 |
 | [`astrcode-extension-goal`](crates/astrcode-extension-goal) | Codex 风格会话目标、Token 预算与自动延续 |
+| [`astrcode-extension-ralph`](crates/astrcode-extension-ralph) | Ralph 循环：反复注入工作区任务文件直到完成承诺 |
 | [`astrcode-extension-memory`](crates/astrcode-extension-memory) | 项目作用域 Markdown 记忆（默认关闭） |
 | [`astrcode-extension-channels`](crates/astrcode-extension-channels) | Telegram 通道桥接（默认关闭） |
 | [`astrcode-extension-web-tools`](crates/astrcode-extension-web-tools) | Web 搜索与 URL 抓取工具（含 SSRF 防护与抓取缓存） |
@@ -404,8 +404,6 @@ Agent 循环（`astrcode-session`）采用分阶段流水线模式：
 3. **流式接收 LLM 响应** — SSE 解析、UTF-8 安全解码、事件累积
 4. **执行工具** — 并行批量执行，支持 pre/post 钩子，结果持久化
 5. **循环或返回** — 有工具调用则回到步骤 1；纯文本回复则终止
-
-Agent 支持运行模式切换（Code / Plan）。Plan 模式下只暴露只读工具和计划管理工具，通过 Exit Gate（自审清单 + 必填 heading 校验）控制退出条件，计划 Artifact 持久化到 `<session>/plan/plan.md`。模式指令通过 `BeforeProviderRequest` 注入，不影响 system prompt 的 KV 缓存。
 
 `ToolPipeline` 结构体负责工具预处理、并行调度和结果持久化。`SharedTurnContext` 携带会话级标识。`consume_llm_stream` 返回 `StreamOutcome` 枚举（`Complete` | `ToolCalls`），让循环体读起来是一组线性排列的命名阶段。
 
@@ -449,8 +447,8 @@ Agent 支持运行模式切换（Code / Plan）。Plan 模式下只暴露只读�
 - **能力声明** — 内置扩展通过 `Extension::manifest()` 声明；磁盘 IPC 扩展在 `extension/initialize` 的 `capabilities` 中声明 `session_state`、`session_control`、`small_model` 等；运行时经 `HostRouter` 鉴权后仅允许已声明的 `astrcode.*` invoke
 - **隔离状态目录** — session 级扩展状态存入 `<session>/extension_data/<extension-id>/`，避免扩展写入 session 根目录
 - **Hook 模式** — `Blocking`（可修改输入/输出）、`NonBlocking`（fire-and-forget）、`Advisory`（仅观察）
-- **快捷键注册** — 扩展通过 `Registrar::keybinding()` 注册键盘快捷键（如 `Shift+Tab` 切换模式）
-- **状态栏项** — 扩展贡献状态栏条目（如当前模式指示器），通过 `StatusItemUpdate` 通知动态更新
+- **快捷键注册** — 扩展通过 `Registrar::keybinding()` 注册键盘快捷键
+- **状态栏项** — 扩展贡献状态栏条目，通过 `StatusItemUpdate` 通知动态更新
 - **磁盘 s5r 扩展** — stdio 长度前缀帧 + JSON `WireMessage`（`extension.json` 中 `protocol.s5r` + `command`）；Worker 发 `Initialize`、`handler.invoke` 与按能力裁剪的 `astrcode.*` invoke。规范见 [docs/extension-system.md](docs/extension-system.md)
 - **扩展运行时** — 带深度限制的会话派生、工具注册队列、优先级分派
 - **生命周期钩子** — `SessionStart` / `SessionResume` / `SessionShutdown`、`TurnStart` / `TurnEnd` / `TurnAborted`、`PreToolUse` / `PostToolUse`、`BeforeProviderRequest` / `AfterProviderResponse`、`PreCompact` / `PostCompact`、`PromptBuild`、`UserPromptSubmit`

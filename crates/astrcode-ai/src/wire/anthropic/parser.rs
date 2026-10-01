@@ -9,8 +9,9 @@ use astrcode_core::llm::{LlmEvent, LlmTokenUsage, LlmTokenUsageSource};
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokio::sync::mpsc;
 
-use crate::common::{
-    DoneOnce, TextDeltaAccumulator, send_event, token_usage_has_value, utf8_prefix,
+use crate::{
+    common::{DoneOnce, TextDeltaAccumulator, send_event, token_usage_has_value, utf8_prefix},
+    wire::is_transient_stream_error,
 };
 
 #[derive(Debug, Default)]
@@ -24,6 +25,8 @@ pub(crate) struct AnthropicStreamState {
     /// 已开始但尚未收到 `content_block_stop` 的 tool call id；流结束时补发完成事件。
     started_tool_call_ids: HashSet<String>,
     saw_tool_call: bool,
+    /// provider 在流内下发的瞬态错误；记录后交由共享传输层决定是否重放。
+    pub(crate) stream_error: Option<String>,
 }
 
 impl AnthropicStreamState {
@@ -278,6 +281,11 @@ fn handle_anthropic_event(
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown Anthropic error")
                 .to_string();
+            if is_transient_stream_error(event) {
+                // 记录并停止读取：共享传输层在流仍可重放时会重发整个请求。
+                state.stream_error = Some(message);
+                return false;
+            }
             send_event(tx, LlmEvent::Error { message })
         },
         _ => {

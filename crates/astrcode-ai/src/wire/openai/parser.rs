@@ -11,6 +11,7 @@ use tokio::sync::mpsc;
 use crate::{
     common::{DoneOnce, TextDeltaAccumulator, send_event, token_usage_has_value, utf8_prefix},
     stream_decoder::clean_json_fragment,
+    wire::is_transient_stream_error,
 };
 
 // ─── StandardAccumulator ────────────────────────────────────────────────
@@ -47,6 +48,8 @@ pub(crate) struct StandardAccumulator {
     /// 累计的 reasoning 文本，用于 diff 提取增量。
     reasoning_accumulated: TextDeltaAccumulator,
     saw_tool_call: bool,
+    /// provider 在流内下发的瞬态错误；记录后交由共享传输层决定是否重放，不再摄入后续事件。
+    stream_error: Option<String>,
 }
 
 impl StandardAccumulator {
@@ -57,6 +60,11 @@ impl StandardAccumulator {
 
     pub(crate) fn has_started_tool_call(&self) -> bool {
         self.saw_tool_call
+    }
+
+    /// 取走流内记录的错误；`Some` 表示该流已终止，调用方应据此重放或上报。
+    pub(crate) fn take_stream_error(&mut self) -> Option<String> {
+        self.stream_error.take()
     }
 
     fn ingest_tool_call_like_delta(
@@ -470,6 +478,10 @@ pub(crate) fn process_sse_line(
     if trimmed.is_empty() {
         return;
     }
+    // 流内错误事件之后 provider 仍可能继续下发数据；该流已判定失败，不再摄入。
+    if accumulator.stream_error.is_some() {
+        return;
+    }
     let Some(after_prefix) = trimmed.strip_prefix("data:") else {
         return;
     };
@@ -552,12 +564,13 @@ fn emit_stream_error(
     }
 
     accumulator.done.suppress();
-    send_event(
-        tx,
-        LlmEvent::Error {
-            message: stream_error_message(event).unwrap_or_else(|| event.to_string()),
-        },
-    );
+    let message = stream_error_message(event).unwrap_or_else(|| event.to_string());
+    if is_transient_stream_error(event) {
+        // 记录而不立即上报：共享传输层在流仍可重放时会重发整个请求，直接上报会先让 turn 失败。
+        accumulator.stream_error = Some(message);
+        return true;
+    }
+    send_event(tx, LlmEvent::Error { message });
     true
 }
 
@@ -1086,7 +1099,7 @@ mod accumulator_tests {
     }
 
     #[test]
-    fn streaming_error_payload_emits_error_without_done() {
+    fn transient_stream_error_payload_is_recorded_for_replay() {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let mut acc = StandardAccumulator::default();
 
@@ -1097,11 +1110,65 @@ mod accumulator_tests {
             &tx,
         );
 
-        let events = drain_events(&mut rx);
+        assert!(drain_events(&mut rx).is_empty());
+        assert_eq!(
+            acc.take_stream_error().as_deref(),
+            Some("compat provider rejected request")
+        );
+        assert!(acc.done_sent());
+    }
+
+    /// 结构化字段明确表示重试无意义时保持原有行为：立刻上报，不占用重试预算。
+    #[test]
+    fn permanent_stream_error_payload_is_reported_immediately() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let mut acc = StandardAccumulator::default();
+
+        process_sse_line(
+            r#"data: {"error":{"message":"bad request","type":"invalid_request_error"}}"#,
+            &mut acc,
+            OpenAiApiMode::ChatCompletions,
+            &tx,
+        );
+
         assert!(matches!(
-            events.as_slice(),
-            [LlmEvent::Error { message }] if message == "compat provider rejected request"
+            drain_events(&mut rx).as_slice(),
+            [LlmEvent::Error { message }] if message == "bad request"
         ));
+        assert!(acc.take_stream_error().is_none());
+        assert!(acc.done_sent());
+    }
+
+    /// 错误事件之后 provider 仍可能继续下发数据；该流已判定失败，后续事件必须丢弃。
+    #[test]
+    fn lines_after_a_stream_error_are_ignored() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let mut acc = StandardAccumulator::default();
+
+        process_sse_line(
+            r#"data: {"error":{"message":"terminated by the server"}}"#,
+            &mut acc,
+            OpenAiApiMode::ChatCompletions,
+            &tx,
+        );
+        process_sse_line(
+            r#"data: {"choices":[{"delta":{"content":"late"}}]}"#,
+            &mut acc,
+            OpenAiApiMode::ChatCompletions,
+            &tx,
+        );
+        process_sse_line(
+            "data: [DONE]",
+            &mut acc,
+            OpenAiApiMode::ChatCompletions,
+            &tx,
+        );
+
+        assert!(drain_events(&mut rx).is_empty());
+        assert_eq!(
+            acc.take_stream_error().as_deref(),
+            Some("terminated by the server")
+        );
         assert!(acc.done_sent());
     }
 

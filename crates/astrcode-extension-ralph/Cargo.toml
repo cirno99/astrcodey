@@ -1,0 +1,19 @@
+[package]
+name = "astrcode-extension-ralph"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Ralph loop: re-feed a workspace task file until a completion promise is printed"
+
+[dependencies]
+astrcode-extension-sdk = { path = "../astrcode-extension-sdk" }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+astrcode-extension-sdk = { path = "../astrcode-extension-sdk", features = ["testing"] }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

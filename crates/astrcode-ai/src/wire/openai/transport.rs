@@ -64,6 +64,10 @@ async fn parse_stream(
         !tx.is_closed()
     })
     .await?;
+    // 流内错误事件已终止本次响应；交给共享传输层决定重放还是上报。
+    if let Some(message) = accumulator.take_stream_error() {
+        return Err(LlmError::StreamDisconnected { message });
+    }
     let Some(summary) = completed else {
         return Ok(());
     };
@@ -128,5 +132,73 @@ mod tests {
                 .any(|e| matches!(e, LlmEvent::ContentDelta { delta } if delta == "hi"))
         );
         assert!(events.iter().any(|e| matches!(e, LlmEvent::Done { .. })));
+    }
+
+    /// provider 在流内下发瞬态错误事件时，传输层按可重放中断重试，turn 不会先失败。
+    #[tokio::test]
+    async fn transient_stream_error_is_retried_while_the_stream_is_replay_safe() {
+        let (addr, requests) = spawn_test_server(|request| {
+            if request == 1 {
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\ndata: {\"error\":{\"message\":\"terminated by the server\"}}\n\n"
+                    .to_vec()
+            } else {
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\ndata: [DONE]\n\n"
+                    .to_vec()
+            }
+        })
+        .await;
+        let stream_started = AtomicBool::new(false);
+        let stream_replay_safe = AtomicBool::new(true);
+        let (tx, mut rx) = mpsc::unbounded_channel();
+
+        let result = crate::common::HttpPostRequest {
+            client: reqwest::Client::builder()
+                .no_proxy()
+                .build()
+                .expect("build local test client"),
+            endpoint: addr,
+            headers: Vec::new(),
+            body: serde_json::json!({}),
+            retry: crate::retry::RetryPolicy {
+                base_delay_ms: 1,
+                max_delay_ms: 100,
+                ..crate::retry::RetryPolicy::default()
+            },
+        }
+        .run(&stream_started, &stream_replay_safe, &tx, |response| {
+            let tx = &tx;
+            let stream_started = &stream_started;
+            let stream_replay_safe = &stream_replay_safe;
+            async move {
+                parse_stream(
+                    response,
+                    OpenAiApiMode::ChatCompletions,
+                    tx,
+                    stream_started,
+                    stream_replay_safe,
+                )
+                .await
+            }
+        })
+        .await;
+
+        assert!(result.is_ok(), "可重放的流内中断必须重试: {result:?}");
+        assert_eq!(requests.load(Ordering::SeqCst), 2);
+        let events: Vec<_> = std::iter::from_fn(|| rx.try_recv().ok()).collect();
+        assert!(
+            matches!(
+                events.as_slice(),
+                [
+                    LlmEvent::Retrying {
+                        status: None,
+                        attempt: 1,
+                        ..
+                    },
+                    LlmEvent::RetryRecovered,
+                    LlmEvent::Done { .. }
+                ]
+            ),
+            "unexpected events: {events:?}"
+        );
     }
 }

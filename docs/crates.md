@@ -43,7 +43,6 @@ AstrCode 当前 workspace 有 31 个成员，全部位于 `crates/` 下。
 | `astrcode-extension-skill` | `crates/astrcode-extension-skill` | lib | Claude-style Skill 发现、`Skill` 工具、skill slash command |
 | `astrcode-extension-session-commands` | `crates/astrcode-extension-session-commands` | lib | 声明 `/compact`、`/model` 及其类型化 Host command intent |
 | `astrcode-extension-todo-tool` | `crates/astrcode-extension-todo-tool` | lib | `todoWrite` session-local 进度列表 |
-| `astrcode-extension-mode` | `crates/astrcode-extension-mode` | lib | code/plan 模式切换与 plan artifact |
 | `astrcode-extension-ask-user` | `crates/astrcode-extension-ask-user` | lib | `askUser` 挂起交互、受保护 HTTP 与实时事件 |
 | `astrcode-extension-goal` | `crates/astrcode-extension-goal` | lib | Codex-style session goal、token 预算与自动续跑 |
 | `astrcode-extension-memory` | `crates/astrcode-extension-memory` | lib | 用户/项目记忆、记忆索引、召回、保存/删除工具 |
@@ -447,37 +446,6 @@ session data path，不需要额外持久化 capability。
 
 测试线索：单元测试覆盖替换、校验、清空、verification nudge、provider reminder、post-tool 重置。
 
-## `astrcode-extension-mode`
-
-路径：`crates/astrcode-extension-mode`
-
-职责：提供 agent 运行模式系统，目前内置 code/plan。模式通过扩展注入，不由核心系统硬编码。
-
-主要模块：
-
-- `catalog`：mode catalog、mode id、mode spec，定义 code/plan 模式能力和限制。
-- `tools`：`switchMode`、`upsertSessionPlan` 的 tool definition 和 handler。
-- `store`：mode state 和 plan artifact 的读写。
-- `prompts`：进入/退出 plan 的 prompt 内容。
-- `lib.rs`：扩展注册、pre-tool-use 限制、provider transition message、slash command、keybinding、status item。
-
-关键行为：
-
-- 工具：`switchMode`、`upsertSessionPlan`。
-- Slash command：`/mode`，可切换或指定 `code`/`plan`。
-- 快捷键：`shift+tab` 切换模式。
-- 状态栏：`mode` 状态项显示当前模式。
-- 持久化：`<session>/extension_data/astrcode-mode/mode/mode-state.json` 和 `plan/plan.md`。
-- plan 模式的工具限制由 `PreToolUse` blocking hook 执行；yolo mode 下放行。
-- 模式切换指令通过 `BeforeProviderRequest` 追加 user message，而不是改变 system prompt，利于 KV cache 稳定。
-
-能力声明：`ProviderRequest`、`ToolIntercept`。session-local mode state 使用默认 namespaced
-session data path，不需要额外持久化 capability。
-
-依赖边界：只依赖 `astrcode-extension-sdk`。
-
-测试线索：`tools.rs`、`store.rs`、`catalog.rs` 覆盖模式切换、计划写入和状态持久化。
-
 ## `astrcode-extension-ask-user`
 
 路径：`crates/astrcode-extension-ask-user`
@@ -519,6 +487,43 @@ state 使用默认 namespaced session data path。
 依赖边界：只依赖 `astrcode-extension-sdk`。session 数据目录、事件读取和 LLM/tool 类型都通过 SDK re-export 使用。
 
 测试线索：`store.rs` 覆盖状态持久化和状态转移；`lib.rs` 覆盖 token 预算、prompt 注入文本和 token fallback 汇总。
+
+## `astrcode-extension-ralph`
+
+路径：`crates/astrcode-extension-ralph`
+
+职责：提供 Ralph 循环——模型每次自然停下后，把工作区任务文件 `.ralph/<name>.md` 的全文重新注入
+上下文，直到它打印出配置的完成承诺、用尽迭代预算，或撞上空转/复读熔断。
+
+关键行为：
+
+- 扩展 id：`astrcode-ralph`。
+- Slash command：`/ralph start <name> [--max N] [--promise TEXT]`、`/ralph stop`、`/ralph status`、
+  `/ralph cancel <name>`。任务正文写在任务文件里，不塞进命令行。
+- 持久化：`<session>/extension_data/astrcode-ralph/loops/<name>.json`；任务文件留在工作区，
+  由用户与模型共同维护。
+- 续跑：注册 priority **50** 的 blocking-only `ContinueAfterStop` decision hook，声明
+  `ContinueAfterStopOptions::unlimited()`——宿主的每轮上限到顶后连 handler 都不再调用，扩展就
+  失去了记录「为什么停下」的机会；迭代预算自持（默认 50，`--max 0` 显式表示无限）。
+- 判据链：`<promise>` 字面量命中 → 迭代上限 → 复读熔断（连续 1 轮）→ 空转熔断（连续 3 轮）
+  → 注入本轮提示并 `ContinueOneStep`。
+- 注入：`defer_context` 把本轮提示追加进当前 turn。注入失败只把原因记进状态并结束 turn，
+  **不返回 handler 错误**——那会被宿主当成 turn 失败。
+- 每轮提示：任务文件全文 + Completion Gate（要求跑一条外部可重跑的验证命令），任务文件超过
+  32 KiB 时截断并注明。
+
+能力声明：`SessionControl`、`WorkspaceRead`、`WorkspaceWrite`、`TurnContinuationControl`。
+
+依赖边界：只依赖 `astrcode-extension-sdk`。
+
+与其他续跑实现的共存：宿主按优先级降序取首个 `ContinueOneStep`，所以实际顺序是
+`astrcode-kanban`(60) > `astrcode-ralph`(50) > `astrcode-goal`(40) > sleep-continue(0)。
+看板驱动的会话里 Ralph 的判定不会被调用；Ralph 进行中时 goal 与 sleep-continue 不会生效，
+`/ralph status` 会把这件事实显式写出来。
+
+测试线索：`plan.rs` 覆盖判据链顺序与承诺解析；`state.rs` 覆盖落盘、损坏状态与多活跃循环；
+`prompt.rs` 覆盖提示组装与字符边界截断；`tests.rs` 用记录型宿主把 `/ralph start` 与续跑判定
+串起来跑。
 
 ## `astrcode-extension-memory`
 

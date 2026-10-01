@@ -191,3 +191,38 @@ pub enum TurnError {
     #[error("turn event ingress failed: {0}")]
     EventIngress(String),
 }
+
+/// 把底层错误文本渲染成用户可见文案，必要时补一句可操作的下一步。
+///
+/// 分类只能基于文本：provider 错误经 `LlmEvent::Error { message }` 进入会话时已经丢掉
+/// `LlmError` 变体，与看板扩展的失败分类同源。匹配串取 `LlmError::ModelNotFound` 的完整
+/// 前缀，避免把配置层的「模型未在 profile 中配置」误判成供应商 404。
+pub(crate) fn user_facing_error_message(message: &str) -> String {
+    let lower = message.to_ascii_lowercase();
+    if lower.contains("model not found (404)") || lower.contains("404 page not found") {
+        return format!(
+            "{message} 提示：供应商未识别该模型，请检查模型名，以及供应商的 base URL 与 API \
+             模式是否正确。"
+        );
+    }
+    message.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn model_not_found_message_gets_an_actionable_hint() {
+        let rendered = user_facing_error_message("model not found (404): 404 page not found");
+        assert!(rendered.starts_with("model not found (404)"), "{rendered}");
+        assert!(rendered.contains("base URL"), "{rendered}");
+    }
+
+    /// 配置层的「模型未在 profile 中配置」不是供应商 404，不应被套上供应商提示。
+    #[test]
+    fn unrelated_messages_are_returned_unchanged() {
+        let message = "model not found in active profile: qwen3";
+        assert_eq!(user_facing_error_message(message), message);
+    }
+}

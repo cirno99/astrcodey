@@ -146,11 +146,9 @@ pub(crate) fn tool_definition() -> ToolDefinition {
     ToolDefinition {
         name: ASK_USER_TOOL_NAME.into(),
         description: ("Ask the user one to four multiple-choice questions to clarify \
-                       requirements, choose between approaches, or confirm decisions.\n\nPlan \
-                       mode: use BEFORE finalizing the plan to gather preferences. Do NOT use to \
-                       ask \"is the plan ready?\" — present the plan via upsertSessionPlan, then \
-                       confirm exit with askUser or switchMode to code.\n\nUsers can always pick \
-                       Other (custom text). Use multiSelect for non-exclusive choices.")
+                       requirements, choose between approaches, or confirm decisions.\n\nUsers \
+                       can always pick Other (custom text). Use multiSelect for non-exclusive \
+                       choices.")
             .into(),
         parameters: json!({
             "type": "object",

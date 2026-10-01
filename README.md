@@ -198,8 +198,8 @@ First-party extensions are wired through [`astrcode-bundled-extensions`](crates/
 | **MCP** | `astrcode-extension-mcp` | MCP protocol client with persistent process pool, background pre-warm, inflight merge |
 | **Skill** | `astrcode-extension-skill` | Slash-command skill discovery and dispatch |
 | **Todo Tool** | `astrcode-extension-todo-tool` | Progress tracking todo list tool |
-| **Mode** | `astrcode-extension-mode` | Agent running mode switching (Code / Plan), with Exit Gate, plan artifact persistence, keybinding & status item registration |
 | **Goal** | `astrcode-extension-goal` | Codex-style session goal tracking, token budgets, and automatic continuation |
+| **Ralph** | `astrcode-extension-ralph` | Ralph loop: re-feeds a workspace task file each round until a completion promise is printed |
 | **Memory** | `astrcode-extension-memory` | Project-scoped markdown memory storage (disabled by default) |
 | **Channels** | `astrcode-extension-channels` | Telegram channel bridge for using AstrCode from an external chat (disabled by default) |
 | **Web Tools** | `astrcode-extension-web-tools` | Built-in `web-search` and `fetch-url` tools (DuckDuckGo default; Brave/Serper optional) |
@@ -367,9 +367,9 @@ The Cargo workspace under [`crates/`](crates/) contains **31 crates**. Crates ar
 | [`astrcode-extension-mcp`](crates/astrcode-extension-mcp) | MCP client: stdio/HTTP transports, persistent process pool, pre-warm, and health checks |
 | [`astrcode-extension-skill`](crates/astrcode-extension-skill) | Slash-command skill discovery and Skill tool dispatch |
 | [`astrcode-extension-todo-tool`](crates/astrcode-extension-todo-tool) | Progress-tracking todo list tool |
-| [`astrcode-extension-mode`](crates/astrcode-extension-mode) | Code / Plan mode switching, exit gate, plan artifact, keybindings, and status bar |
 | [`astrcode-extension-ask-user`](crates/astrcode-extension-ask-user) | Structured user questions, pending interaction state, and protected replies |
 | [`astrcode-extension-goal`](crates/astrcode-extension-goal) | Codex-style session goals, token budgets, and automatic continuation |
+| [`astrcode-extension-ralph`](crates/astrcode-extension-ralph) | Ralph loop: re-injects a workspace task file each round until a completion promise is printed |
 | [`astrcode-extension-memory`](crates/astrcode-extension-memory) | Project-scoped markdown memory (disabled by default) |
 | [`astrcode-extension-channels`](crates/astrcode-extension-channels) | Telegram channel bridge (disabled by default) |
 | [`astrcode-extension-web-tools`](crates/astrcode-extension-web-tools) | Web search and URL fetch tools with SSRF guards and fetch cache |
@@ -404,8 +404,6 @@ The agent loop (`astrcode-session`) follows a phased pipeline pattern:
 3. **Stream LLM response** — SSE parsing, UTF-8 safe decoding, event accumulation
 4. **Execute tools** — parallel batch execution with pre/post hooks, result persistence
 5. **Loop or return** — tool calls loop back; text-only responses terminate
-
-The agent supports running mode switching (Code / Plan). Plan mode restricts tools to read-only and plan management, enforces an exit gate (self-review checklist + required heading validation), and persists the plan artifact to `<session>/plan/plan.md`. Mode instructions are injected via `BeforeProviderRequest`, preserving the system prompt KV cache.
 
 The `ToolPipeline` struct owns tool preprocessing, parallel scheduling, and result persistence. The `SharedTurnContext` struct carries session-level identifiers. `consume_llm_stream` returns a `StreamOutcome` enum (`Complete` | `ToolCalls`) that makes the loop body read as a linear sequence of named phases.
 
@@ -449,8 +447,8 @@ The extension system (`astrcode-extensions`) is a core architectural pillar, not
 - **Capability declarations** — bundled extensions declare capabilities in `Extension::manifest()`; disk IPC extensions declare them during `extension/initialize`; the runtime authorizes `astrcode.*` invokes via `HostRouter`
 - **Namespaced session state** — session-scoped extension state is stored under `<session>/extension_data/<extension-id>/`, keeping the session root owned by the host
 - **Hook modes** — `Blocking` (can modify input/output), `NonBlocking` (fire-and-forget), `Advisory` (observe-only); lifecycle Blocking is limited to turn-entry gates
-- **Keybinding registration** — extensions register keyboard shortcuts (e.g. `Shift+Tab` for mode toggle) via `Registrar::keybinding()`
-- **Status bar items** — extensions contribute status bar entries (e.g. current mode indicator) with runtime updates via `StatusItemUpdate` notifications
+- **Keybinding registration** — extensions register keyboard shortcuts via `Registrar::keybinding()`
+- **Status bar items** — extensions contribute status bar entries with runtime updates via `StatusItemUpdate` notifications
 - **Disk s5r extensions** — stdio length-prefixed frames + JSON `WireMessage` (`protocol.s5r` + `command` in `extension.json`); worker `Initialize`, `handler.invoke`, and capability-scoped `astrcode.*` invoke. See [docs/extension-system.md](docs/extension-system.md)
 - **Extension runtime** — session spawning with depth limits, tool registration queue, priority-based dispatch
 - **Lifecycle hooks** — `SessionStart` / `SessionResume` / `SessionShutdown`, `TurnStart` / `TurnEnd` / `TurnAborted`, `PreToolUse` / `PostToolUse`, `BeforeProviderRequest` / `AfterProviderResponse`, `PreCompact` / `PostCompact`, `PromptBuild`, `UserPromptSubmit`

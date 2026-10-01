@@ -23,7 +23,7 @@ pub mod llm {
 
 pub mod event {
     pub use astrcode_core::event::{
-        Event, EventDeliveryReceipt, EventPayload, EventSendError, EventSender,
+        Event, EventDeliveryReceipt, EventPayload, EventSendError, EventSender, stable_hash_hex,
     };
 }
 

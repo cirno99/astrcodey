@@ -114,8 +114,7 @@ impl LlmContent {
     /// 这是有损转换——不可能完全还原原始渲染效果。
     /// - `Text` / `ToolResult`：原样输出。
     /// - `Image`：返回占位符 `[image]`。
-    /// - `ToolCall`：只输出工具名；具体工具的展示特判属于投影层（如 server 对 `upsertSessionPlan`
-    ///   提取 plan 正文），不在契约层硬编码。
+    /// - `ToolCall`：只输出工具名；具体工具的展示特判属于投影层，不在契约层硬编码。
     pub fn to_display_text(&self) -> String {
         match self {
             LlmContent::Text { text } => text.clone(),

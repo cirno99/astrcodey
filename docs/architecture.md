@@ -269,7 +269,7 @@ Session、Step 和结束类事件已发生或正在收尾，注册为 Blocking �
 
 扩展通过 `Registrar` 注册交互能力：
 
-- **Keybinding 注册** — `Registrar::keybinding()` 注册快捷键（如 `Shift+Tab`），绑定到扩展命令
+- **Keybinding 注册** — `Registrar::keybinding()` 注册快捷键，绑定到扩展命令
 - **StatusItem 注册** — `Registrar::status_item()` 贡献状态栏条目，运行时通过 `StatusItemUpdate` 通知动态更新
 
 这些能力随 `ExtensionCommandList` 通知下发到客户端，前端可渲染。
@@ -282,13 +282,9 @@ Session 只消费五个窄端口：runtime publication、tool catalog、prompt c
 turn hooks 和 session operations。工具与 prompt 通过 generation 组成一致快照；hooks
 是实时策略面，故意不随工具快照固定，重载后的安全/审批策略可以立即作用于活跃 turn。
 
-### 插件化模式系统
-
-Mode 扩展已从内置逻辑迁移为完整插件：通过 `Registrar` 注册 `/mode` 斜杠命令、`Shift+Tab` 快捷键和状态栏项。核心系统不硬编码任何业务逻辑，一切行为能力都通过扩展注册。
-
 ### 当前状态
 
-内部插件实现（MCP client / Skill / Agent-Tool / Todo / Mode / Goal / Memory / Channels / Web Tools）统一依赖扩展 SDK；外置扩展通过 s5r 子进程加载，并在 typed `InitializeManifest` 中声明所需宿主能力。
+内部插件实现（MCP client / Skill / Agent-Tool / Todo / Goal / Memory / Channels / Web Tools）统一依赖扩展 SDK；外置扩展通过 s5r 子进程加载，并在 typed `InitializeManifest` 中声明所需宿主能力。
 
 ---
 
@@ -320,25 +316,7 @@ Mode 扩展已从内置逻辑迁移为完整插件：通过 `Registrar` 注册 `
 
 ---
 
-## 8. 运行模式
-
-### Code 模式（默认）
-
-- 完整工具访问权限
-- 支持文件读写、编辑、shell 执行
-- 适合实际编码任务
-
-### Plan 模式
-
-- 专用 Plan 管理工具
-- 计划持久化到 `<session>/plan/plan.md`
-- 适合复杂任务的前期规划
-
-两种模式均通过 Mode 扩展插件实现
-
----
-
-## 9. 关键设计决策
+## 8. 关键设计决策
 
 ### Session-First 事件溯源
 
@@ -346,7 +324,7 @@ Session 是唯一的持久事实来源。所有状态变化都以不可变事件
 
 ### Extension-First 架构
 
-核心只保留必须通用的机制（agent loop、hooks、context compaction、权限与资源 lease）。所有工具，包括第一方 coding 工具，都通过扩展接入；Host 只提供受能力与 lease 约束的 workspace/process 等基础能力。Mode 系统和 coding 工具都验证了这一边界。
+核心只保留必须通用的机制（agent loop、hooks、context compaction、权限与资源 lease）。所有工具，包括第一方 coding 工具，都通过扩展接入；Host 只提供受能力与 lease 约束的 workspace/process 等基础能力。coding 工具验证了这一边界。
 
 ### 工具-First 而非 extension-First
 

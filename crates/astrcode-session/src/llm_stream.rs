@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     repetition_guard::{DegenerateRepetition, RepetitionGuard, RepetitionStream},
     tool_types::StreamedToolCall,
-    turn_context::TurnError,
+    turn_context::{TurnError, user_facing_error_message},
     turn_publish::TurnEvents,
 };
 
@@ -330,7 +330,7 @@ impl<'a> StreamConsumer<'a> {
         self.publisher
             .durable_error(
                 crate::payload::JSON_RPC_INTERNAL_ERROR,
-                message.clone(),
+                user_facing_error_message(&message),
                 false,
             )
             .await?;

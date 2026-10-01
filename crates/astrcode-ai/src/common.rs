@@ -269,7 +269,8 @@ impl HttpPostRequest {
     /// provider 尝试，自身不重试。规则：
     /// - 传输层错误（DNS/TLS/连接重置）→ 按 `max_transport_retries` 重试
     /// - 可重试 HTTP 状态码（经 [`LlmError::is_retryable`] 判定）→ 按 `max_retries` 重试
-    /// - `on_success` 返回 `Transport` 错误，且流尚未消费或仍可安全重放 → 按传输层错误重试
+    /// - `on_success` 返回 `Transport`/`StreamDisconnected` 错误，且流尚未消费或仍可安全重放 →
+    ///   按传输层错误重试（后者来自 provider 在流内下发的瞬态错误事件）
     /// - 其他错误 → 直接返回
     pub(crate) async fn run<F, Fut>(
         &self,
@@ -378,8 +379,8 @@ impl HttpPostRequest {
                 match on_success(response).await {
                     Ok(value) => return Ok(value),
                     Err(error) => {
-                        if let (LlmError::Transport { message }, Some((started, replay_safe))) =
-                            (&error, stream_replay)
+                        if is_replayable_stream_error(&error)
+                            && let Some((started, replay_safe)) = stream_replay
                             && (!started.load(Ordering::SeqCst)
                                 || replay_safe.load(Ordering::SeqCst))
                         {
@@ -399,8 +400,8 @@ impl HttpPostRequest {
                             }
                             retry_reported = true;
                             tracing::warn!(
-                                "LLM stream read failed with transport error (attempt \
-                                 {transport_retry_attempt}/{}), retrying after {}ms: {message}",
+                                "LLM stream read failed with a replayable error (attempt \
+                                 {transport_retry_attempt}/{}), retrying after {}ms: {error}",
                                 self.retry.max_transport_retries,
                                 delay.as_millis(),
                             );
@@ -480,6 +481,16 @@ fn retry_classification(status: u16) -> LlmError {
             message: String::new(),
         },
     }
+}
+
+/// 消费响应体期间可以安全重放的中断：传输层抖动，或 provider 在流内下发的瞬态错误事件。
+///
+/// 是否真的重放仍由调用方的 `stream_replay` 判定——流里已出现工具调用后不得重发。
+fn is_replayable_stream_error(error: &LlmError) -> bool {
+    matches!(
+        error,
+        LlmError::Transport { .. } | LlmError::StreamDisconnected { .. }
+    )
 }
 
 fn send_retrying_event(

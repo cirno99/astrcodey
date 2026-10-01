@@ -257,8 +257,8 @@ thinkingCapability = { wireMapping = "open_ai_chat", allowedEffort = [], canDisa
 | `astrcode-mcp` | 启用 | MCP 客户端 |
 | `astrcode-skill` | 启用 | Skill 斜杠命令 |
 | `astrcode-todo-tool` | 启用 | Todo 工具 |
-| `astrcode-mode` | 启用 | Code / Plan 模式 |
 | `astrcode-goal` | 启用 | session goal 与自动续跑 |
+| `astrcode-ralph` | 启用 | Ralph 循环：反复注入工作区任务文件直到完成承诺 |
 | `astrcode-web-tools` | 启用 | `web-search` / `fetch-url` |
 | `astrcode.memory` | **关闭** | 项目记忆 |
 | `astrcode-channels` | **关闭** | Telegram 通道 |
@@ -266,7 +266,7 @@ thinkingCapability = { wireMapping = "open_ai_chat", allowedEffort = [], canDisa
 ```toml
 [runtime.extensionStates]
 "astrcode.memory" = true
-"astrcode-mode" = false
+"astrcode-todo-tool" = false
 ```
 
 显式 `false` / `true` 覆盖默认策略。与 [`extension-system.md`](extension-system.md) 中的内置扩展表一致。

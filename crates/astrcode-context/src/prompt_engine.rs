@@ -114,10 +114,9 @@ const TASK_GUIDELINES: &str =
      The cost of pausing to confirm is low; the cost of an unwanted action can be very \
      high.\n\n## Git\nCreate new commits. Never amend/force-push, skip hooks, or modify git \
      config. Fetch before pushing. Never commit secrets or credentials.\n\n## Planning\nFor \
-     multi-file changes, ambiguous scope, or risky modifications, proactively switch to plan mode \
-     to design before implementing. Do not plan for simple, well-understood tasks.\n\n## \
-     Precedence\nUser Rules and Project Rules override the defaults in this section when they \
-     conflict.";
+     multi-file changes, ambiguous scope, or risky modifications, proactively design before \
+     implementing. Do not plan for simple, well-understood tasks.\n\n## Precedence\nUser Rules \
+     and Project Rules override the defaults in this section when they conflict.";
 
 const COMMUNICATION: &str =
     "Keep the user oriented without narrating routine tool use.\n\nBefore starting non-trivial \
