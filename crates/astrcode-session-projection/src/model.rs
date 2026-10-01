@@ -10,8 +10,8 @@ use rustc_hash::FxHashSet as HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AgentSessionLinkView, SessionExecutionState, SessionModelContext, SessionPresentation,
-    SessionSystemPrompt, UnansweredToolCall,
+    AgentSessionLinkView, SessionExecutionState, SessionMetrics, SessionModelContext,
+    SessionPresentation, SessionSystemPrompt, UnansweredToolCall,
 };
 
 /// 创建 fork session 时记录的来源位置。
@@ -34,6 +34,7 @@ pub struct SessionReadModel {
     pub presentation: SessionPresentation,
     pub execution: SessionExecutionState,
     pub agent_sessions: Vec<AgentSessionLinkView>,
+    pub metrics: SessionMetrics,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -88,6 +89,7 @@ impl SessionReadModel {
             presentation: SessionPresentation::default(),
             execution: SessionExecutionState::default(),
             agent_sessions: Vec::new(),
+            metrics: SessionMetrics::default(),
         }
     }
 

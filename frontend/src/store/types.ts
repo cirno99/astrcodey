@@ -2,6 +2,7 @@ import type {
   AgentSessionLink,
   ConversationBlock,
   ConversationControlState,
+  ConversationMetrics,
   ExtensionStateView,
   KanbanCard,
   KeybindingInfo,
@@ -51,6 +52,8 @@ export interface AppState {
   sessionStreamError: string | null
   modelRefreshKey: number
   agentSessions: AgentSessionLink[]
+  /** 会话累计的模型用量指标；由 `metricsUpdated` 整体覆盖，会话切换时清空。 */
+  metrics: ConversationMetrics | null
   statusItems: Record<string, string>
   statusItemRevisions: Record<string, number>
   keybindings: KeybindingInfo[]

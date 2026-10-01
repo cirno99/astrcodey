@@ -59,6 +59,7 @@ const DEFAULT_SESSION_STATE = {
   sessionStreamError: null,
   workingDir: null,
   agentSessions: [],
+  metrics: null,
   pendingMessages: [],
   composerDeliveryMode: 'queued',
   slashCommands: [],

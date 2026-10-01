@@ -33,6 +33,7 @@ export type ConversationRenderState = Pick<
   | 'askUserEventRevision'
   | 'transientHint'
   | 'timelineDetachedFromLatest'
+  | 'metrics'
 >
 
 type ConversationRenderPatch = Partial<ConversationRenderState>
@@ -144,6 +145,7 @@ export function reduceConversationDeltas(
   let transientBlockOwners = initialTransientBlockOwners
   let control = current.control
   let agentSessions = current.agentSessions
+  let metrics = current.metrics
   let statusItems = current.statusItems
   let statusItemRevisions = current.statusItemRevisions
   let pendingAskUserQuestions = current.pendingAskUserQuestions
@@ -288,6 +290,10 @@ export function reduceConversationDeltas(
         break
       }
 
+      case 'metricsUpdated':
+        metrics = delta.metrics
+        break
+
       case 'extensionRegistryChanged':
         transientHint = '扩展已更新'
         break
@@ -397,6 +403,7 @@ export function reduceConversationDeltas(
     patch.agentSessions = agentSessions
   }
   if (statusItems !== current.statusItems) patch.statusItems = statusItems
+  if (metrics !== current.metrics) patch.metrics = metrics
   if (statusItemRevisions !== current.statusItemRevisions) {
     patch.statusItemRevisions = statusItemRevisions
   }

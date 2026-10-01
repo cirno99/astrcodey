@@ -17,6 +17,7 @@ import ModelSelector from './ModelSelector'
 import CommandSelector from './CommandSelector'
 import ArgumentCompletionSelector from './ArgumentCompletionSelector'
 import PendingMessagesPanel from './PendingMessagesPanel'
+import ConversationMetricsBar from './ConversationMetricsBar'
 import ComposerAttachments from './ComposerAttachments'
 import {
   attachmentToWire,
@@ -59,6 +60,7 @@ export default function InputBar({ presentation = 'docked' }: InputBarProps) {
     effectiveConversationPhase(state.control, state.compactSubmitting)
   )
   const statusItems = useAppStore((s) => s.statusItems)
+  const metrics = useAppStore((s) => s.metrics)
   const slashCommands = useAppStore((s) => s.slashCommands)
   const refreshCommands = useAppStore((s) => s.refreshCommands)
   const pendingMessages = useAppStore((s) => s.pendingMessages)
@@ -573,7 +575,7 @@ export default function InputBar({ presentation = 'docked' }: InputBarProps) {
           }}
         />
         <div className="relative w-full">
-          <div className="mx-4 flex min-h-12 items-start gap-5 overflow-hidden rounded-t-[22px] bg-surface-muted/75 px-6 pb-3 pt-3 text-[13px] text-text-secondary">
+          <div className="mx-4 flex min-h-12 flex-wrap items-start gap-x-5 gap-y-1 overflow-hidden rounded-t-[22px] bg-surface-muted/75 px-6 pb-3 pt-3 text-[13px] text-text-secondary">
             {projectName && (
               <div
                 className="flex min-w-0 max-w-[220px] items-center gap-2"
@@ -617,6 +619,7 @@ export default function InputBar({ presentation = 'docked' }: InputBarProps) {
                 {text}
               </span>
             ))}
+            {metrics && <ConversationMetricsBar metrics={metrics} />}
           </div>
           <div className={cn(composerShell, 'relative z-10 -mt-2')}>
             <div

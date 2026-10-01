@@ -408,6 +408,36 @@ pub struct ConversationControlStateDto {
     pub retry_status: Option<LlmRetryStatusDto>,
 }
 
+/// 会话累计的模型用量指标。
+///
+/// 这是 durable event log 的纯函数投影，客户端以最新值覆盖本地状态即可，无需增量累加。
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationMetricsDto {
+    /// 上报过用量的模型请求数。
+    pub requests: u64,
+    /// 归一化后的完整 prompt token 数。
+    pub prompt_tokens: u64,
+    /// 其中命中缓存读取的 token 数。
+    pub cached_tokens: u64,
+    /// 写入缓存的 token 数（仅组成部分语义的 provider 会非零）。
+    pub cache_creation_tokens: u64,
+    /// 生成 token 数。
+    pub output_tokens: u64,
+    /// 其中推理 token 数。
+    pub reasoning_output_tokens: u64,
+    /// 最近一次响应结束后的上下文占用；上下文身份变化时为空。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_tokens: Option<u64>,
+    /// 与 `context_tokens` 同一次上报的上下文窗口大小。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_context_window: Option<u64>,
+    /// 当前轮每秒生成 token 数；只统计模型请求时长，没有计时样本时为空。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_tokens_per_second: Option<f64>,
+}
+
 /// LLM 请求的瞬态 HTTP 或传输重试状态。
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -605,6 +635,10 @@ pub enum ConversationDeltaDto {
     },
     /// 扩展注册表发生变化，客户端应重新拉取命令/快捷键/状态栏快照。
     ExtensionRegistryChanged,
+    /// 会话模型用量指标更新；携带绝对累计值，客户端直接覆盖本地状态。
+    MetricsUpdated {
+        metrics: ConversationMetricsDto,
+    },
     ToolApprovalRequested {
         approval: ToolApprovalDto,
     },

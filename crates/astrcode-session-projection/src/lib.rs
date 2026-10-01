@@ -6,6 +6,7 @@
 mod agents;
 mod error;
 mod execution;
+mod metrics;
 mod model;
 mod model_context;
 mod presentation;
@@ -15,6 +16,7 @@ pub mod session_lineage;
 pub use agents::{AgentSessionLinkView, AgentSessionStatus};
 pub use error::ProjectionError;
 pub use execution::{ActiveStepView, PendingInput, PendingToolApprovalView, SessionExecutionState};
+pub use metrics::{SessionMetrics, TurnThroughput};
 pub use model::{
     ForkSourceRef, SessionEventStats, SessionIdentity, SessionReadModel, SessionSummary,
 };

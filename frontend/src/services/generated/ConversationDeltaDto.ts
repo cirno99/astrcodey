@@ -3,6 +3,7 @@ import type { AgentSessionUpdateDto } from "./AgentSessionUpdateDto";
 import type { ApprovalDecisionDto } from "./ApprovalDecisionDto";
 import type { ConversationBlockDto } from "./ConversationBlockDto";
 import type { ConversationControlStateDto } from "./ConversationControlStateDto";
+import type { ConversationMetricsDto } from "./ConversationMetricsDto";
 import type { ToolApprovalDto } from "./ToolApprovalDto";
 import type { ToolOutputStreamDto } from "./ToolOutputStreamDto";
 import type { JsonValue } from "./serde_json/JsonValue";
@@ -14,4 +15,4 @@ export type ConversationDeltaDto = { "kind": "appendBlock", block: ConversationB
 /**
  * 原始 JSON 参数，供前端结构化解析（如 agent 工具的 task/agent 提取）。
  */
-argumentsJson?: JsonValue | null, } | { "kind": "toolOutput", callId: string, stream: ToolOutputStreamDto, delta: string, } | { "kind": "thinkingDelta", blockId: string, delta: string, } | { "kind": "agentSessionUpdated", agentSession: AgentSessionUpdateDto, } | { "kind": "agentSessionRemoved", childSessionId: string, } | { "kind": "statusItemUpdate", id: string, text: string, } | { "kind": "extensionRegistryChanged" } | { "kind": "toolApprovalRequested", approval: ToolApprovalDto, } | { "kind": "toolApprovalResolved", callId: string, decision: ApprovalDecisionDto, } | { "kind": "customEvent", extensionId: string, eventType: string, schemaVersion: number, payload: JsonValue, };
+argumentsJson?: JsonValue | null, } | { "kind": "toolOutput", callId: string, stream: ToolOutputStreamDto, delta: string, } | { "kind": "thinkingDelta", blockId: string, delta: string, } | { "kind": "agentSessionUpdated", agentSession: AgentSessionUpdateDto, } | { "kind": "agentSessionRemoved", childSessionId: string, } | { "kind": "statusItemUpdate", id: string, text: string, } | { "kind": "extensionRegistryChanged" } | { "kind": "metricsUpdated", metrics: ConversationMetricsDto, } | { "kind": "toolApprovalRequested", approval: ToolApprovalDto, } | { "kind": "toolApprovalResolved", callId: string, decision: ApprovalDecisionDto, } | { "kind": "customEvent", extensionId: string, eventType: string, schemaVersion: number, payload: JsonValue, };

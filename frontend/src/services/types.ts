@@ -17,6 +17,7 @@ import type {
   ConfigViewResponseDto,
   ConversationBlockStatusDto,
   ConversationCursorDto,
+  ConversationMetricsDto,
   ConversationTimelineCursorDto,
   CreateSessionRequest,
   CreateSessionResponseDto,
@@ -73,6 +74,7 @@ export type ToolCallStatus = ToolCallStatusDto
 export type ApprovalMode = ApprovalModeDto
 export type ApprovalDecision = ApprovalDecisionDto
 export type ToolApproval = ToolApprovalDto
+export type ConversationMetrics = ConversationMetricsDto
 
 export function toolCallHasError(status: ToolCallStatus): boolean {
   return status === 'failed'
@@ -332,6 +334,7 @@ export type ConversationDelta =
   | { kind: 'agentSessionRemoved'; childSessionId: string }
   | { kind: 'statusItemUpdate'; id: string; text: string }
   | { kind: 'extensionRegistryChanged' }
+  | { kind: 'metricsUpdated'; metrics: ConversationMetrics }
   | {
       kind: 'customEvent'
       extensionId: string

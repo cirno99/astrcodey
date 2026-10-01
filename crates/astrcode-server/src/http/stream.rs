@@ -17,11 +17,11 @@ use astrcode_core::{
 use astrcode_protocol::{
     events::ClientNotification,
     http::{
-        ConversationBlockDto, ConversationCursorDto, ConversationDeltaDto,
+        ConversationBlockDto, ConversationCursorDto, ConversationDeltaDto, ConversationMetricsDto,
         ConversationStreamEnvelopeDto,
     },
 };
-use astrcode_session_projection::AgentSessionStatus;
+use astrcode_session_projection::{AgentSessionStatus, SessionMetrics};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -40,7 +40,7 @@ use uuid::Uuid;
 
 use super::{
     HttpState, error_response,
-    projection::{live::event_to_deltas, replay::event_to_replay_deltas},
+    projection::{live::event_to_deltas, metrics_to_dto, replay::event_to_replay_deltas},
 };
 use crate::bootstrap::ServerRuntime;
 
@@ -68,6 +68,44 @@ struct LiveStreamState {
     child_sessions: ChildSessionTracker,
     /// 缓存的最新 cursor，用于 live-only 事件（避免每次查询存储）。
     cached_cursor: Option<String>,
+    /// live 阶段的指标累计；流开启时由 read model 播种，之后随会话事件折叠。
+    metrics: SessionMetrics,
+    /// 已折叠进 `metrics` 的最大 durable seq；<= 该值的事件已由种子覆盖。
+    metrics_seq: u64,
+}
+
+impl LiveStreamState {
+    /// 把会话事件折叠进指标累计，返回需要推送的绝对指标。
+    ///
+    /// `metrics_seq` 之前的 durable 事件已由流开启时的种子覆盖，重复折叠会双计。
+    /// 只有上报了用量的 `TokenUsageRecorded` 会改变对外可见的指标。
+    fn record_metrics_event(&mut self, event: &Event) -> Option<ConversationMetricsDto> {
+        let seq = event.seq?;
+        if seq <= self.metrics_seq {
+            return None;
+        }
+        self.metrics_seq = seq;
+        let EventPayload::Durable(payload) = &event.payload else {
+            return None;
+        };
+        self.metrics
+            .record(payload, event.turn_id.as_ref(), event.timestamp)
+            .then(|| metrics_to_dto(&self.metrics))
+    }
+}
+
+/// 读取会话当前的指标累计，作为 live 阶段折叠的起点。
+async fn seed_session_metrics(
+    runtime: &ServerRuntime,
+    session_id: &SessionId,
+) -> (SessionMetrics, u64) {
+    match runtime.session_manager().read_model(session_id).await {
+        Ok(model) => (model.metrics.clone(), model.stats.last_seq),
+        Err(error) => {
+            tracing::warn!(%session_id, %error, "failed to seed SSE metrics");
+            (SessionMetrics::default(), 0)
+        },
+    }
 }
 
 enum LiveInput {
@@ -194,6 +232,20 @@ pub(in crate::http) async fn session_stream(
         )
     }));
 
+    // 指标是事件日志的纯函数：流开启时先把当前值作为种子推给客户端，覆盖快照之后到
+    // 本流建立之间可能错过的事件；`metrics_seq` 之后的事件再由 live 阶段增量折叠。
+    let (metrics, metrics_seq) = seed_session_metrics(http_state.app.runtime(), &session_id).await;
+    let mut pending = std::collections::VecDeque::new();
+    if metrics.has_usage() {
+        pending.push_back(conversation_sse_item(
+            &session_id,
+            metrics_seq.to_string(),
+            ConversationDeltaDto::MetricsUpdated {
+                metrics: metrics_to_dto(&metrics),
+            },
+        ));
+    }
+
     let live_runtime = Arc::clone(http_state.app.runtime());
     let live_stream = stream::unfold(
         LiveStreamState {
@@ -203,11 +255,13 @@ pub(in crate::http) async fn session_stream(
             session_id,
             replay_max_seq,
             closing: false,
-            pending: std::collections::VecDeque::new(),
+            pending,
             has_messages,
             drained: false,
             cached_cursor: None,
             child_sessions: child_session_tracker,
+            metrics,
+            metrics_seq,
         },
         |mut state| async move {
             if state.closing {
@@ -393,7 +447,10 @@ async fn event_to_sse_items(state: &mut LiveStreamState, event: Arc<Event>) -> V
                 state.cached_cursor = Some(seq.to_string());
             }
 
-            let deltas = event_to_deltas(event, state.has_messages);
+            let mut deltas = event_to_deltas(event, state.has_messages);
+            if let Some(metrics) = state.record_metrics_event(event) {
+                deltas.push(ConversationDeltaDto::MetricsUpdated { metrics });
+            }
             if deltas.is_empty() {
                 return Vec::new();
             }

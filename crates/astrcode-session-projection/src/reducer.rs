@@ -238,6 +238,9 @@ fn apply_validated_event(event: &StoredEvent, model: &mut SessionReadModel) {
     presentation::apply_event(event, &mut model.presentation);
     execution::apply_event(event, &mut model.execution);
     agents::apply_event(event, &mut model.agent_sessions);
+    model
+        .metrics
+        .record(&event.payload, event.turn_id.as_ref(), event.timestamp);
 
     match &event.payload {
         DurableEventPayload::ModelIdChanged { model_id } => {

@@ -9,6 +9,9 @@
 
 use std::collections::BTreeMap;
 
+use astrcode_protocol::http::ConversationMetricsDto;
+use astrcode_session_projection::SessionMetrics;
+
 pub(in crate::http) mod args;
 pub(in crate::http) mod blocks;
 pub(in crate::http) mod live;
@@ -33,4 +36,25 @@ fn non_empty_metadata(metadata: &BTreeMap<String, serde_json::Value>) -> Option<
                 .collect::<serde_json::Map<_, _>>(),
         )
     })
+}
+
+/// 会话指标读模型 → wire DTO。
+pub(in crate::http) fn metrics_to_dto(metrics: &SessionMetrics) -> ConversationMetricsDto {
+    ConversationMetricsDto {
+        requests: metrics.requests,
+        prompt_tokens: metrics.prompt_tokens,
+        cached_tokens: metrics.cached_tokens,
+        cache_creation_tokens: metrics.cache_creation_tokens,
+        output_tokens: metrics.output_tokens,
+        reasoning_output_tokens: metrics.reasoning_output_tokens,
+        context_tokens: metrics
+            .context_tokens
+            .and_then(|tokens| u64::try_from(tokens).ok()),
+        model_context_window: metrics
+            .model_context_window
+            .and_then(|tokens| u64::try_from(tokens).ok()),
+        output_tokens_per_second: metrics
+            .throughput
+            .and_then(|throughput| throughput.output_tokens_per_second()),
+    }
 }

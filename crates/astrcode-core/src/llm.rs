@@ -617,17 +617,31 @@ impl ProviderInputTokenCount {
     }
 }
 
+/// 归一化后的 prompt 侧 token 计数。
+///
+/// provider 的 input 计数语义不同：`Inclusive` 的 `input_tokens` 已包含缓存读取，
+/// `Components` 则是彼此独立的分量。跨 provider 累加前必须先在单个样本上归一化，
+/// 否则分母口径不一致。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NormalizedPromptTokens {
+    /// 完整 prompt token 数（常规输入 + 缓存读取 + 缓存写入）。
+    pub full: u64,
+    /// 其中命中缓存读取的 token 数。
+    pub cached: u64,
+}
+
+impl NormalizedPromptTokens {
+    /// 未命中缓存的 prompt token 数。
+    pub fn uncached(&self) -> u64 {
+        self.full.saturating_sub(self.cached)
+    }
+}
+
 impl LlmTokenUsage {
     /// Returns billable non-cache-read input plus generated output.
     pub fn non_cached_tokens(&self) -> Option<u64> {
         let cached = self.cached_input_tokens.unwrap_or_default();
-        let component_accounting = matches!(
-            self.input_accounting,
-            Some(LlmInputTokenAccounting::Components)
-        ) || (self.input_accounting.is_none()
-            && self.cache_creation_input_tokens.is_some());
-        // Persisted usage predating `input_accounting` only populated cache-creation tokens for
-        // component-style providers.
+        let component_accounting = self.uses_component_input_accounting();
         if component_accounting {
             let input = self
                 .input_tokens
@@ -670,6 +684,55 @@ impl LlmTokenUsage {
                 .saturating_add(self.cache_creation_input_tokens.unwrap_or(0))
                 .saturating_add(output),
         })
+    }
+
+    /// 是否按「组成部分」语义解释 input 计数。
+    ///
+    /// 与 `non_cached_tokens`、`context_tokens_after_response` 共用同一判定。历史数据
+    /// 里只有组成部分语义的 provider 才会写入缓存写入计数，因此未声明语义时以它为准。
+    fn uses_component_input_accounting(&self) -> bool {
+        matches!(
+            self.input_accounting,
+            Some(LlmInputTokenAccounting::Components)
+        ) || (self.input_accounting.is_none() && self.cache_creation_input_tokens.is_some())
+    }
+
+    /// 本次调用是否上报了任何可用计数。
+    pub fn has_any_usage(&self) -> bool {
+        self.input_tokens.is_some()
+            || self.cached_input_tokens.is_some()
+            || self.cache_creation_input_tokens.is_some()
+            || self.total_tokens.is_some()
+            || self.output_tokens.is_some()
+    }
+
+    /// 把本样本的 prompt 计数归一化成跨 provider 可累加的 `full` / `cached`。
+    pub fn normalized_prompt_tokens(&self) -> NormalizedPromptTokens {
+        let cached = self.cached_input_tokens.unwrap_or_default();
+        if self.uses_component_input_accounting() {
+            let uncached = self
+                .input_tokens
+                .unwrap_or_default()
+                .saturating_add(self.cache_creation_input_tokens.unwrap_or_default());
+            return NormalizedPromptTokens {
+                full: uncached.saturating_add(cached),
+                cached,
+            };
+        }
+
+        // Inclusive：input 已包含缓存读取。缺少 input 时用 total - output 反推 prompt，
+        // 因为 total 含生成量，不能直接当作 prompt。
+        let full = match self.input_tokens {
+            Some(input) => input,
+            None => self
+                .total_tokens
+                .map(|total| total.saturating_sub(self.output_tokens.unwrap_or_default()))
+                .unwrap_or_default(),
+        };
+        NormalizedPromptTokens {
+            full,
+            cached: cached.min(full),
+        }
     }
 }
 
